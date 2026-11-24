@@ -19,7 +19,9 @@ export default async function RestaurantPanelLayout({
 
   if (ctx.readOnly) {
     const supabase = await createClient();
-    await supabase.rpc('log_admin_view', { p_restaurant_id: restaurantId });
+    const { error } = await supabase.rpc('log_admin_view', { p_restaurant_id: restaurantId });
+    // Sin registro de auditoría no se entra en modo soporte (lo recoge error.tsx).
+    if (error) throw new Error(`log_admin_view: ${error.message}`);
   }
 
   if (ctx.restaurant.status === 'disabled' && !ctx.readOnly) {

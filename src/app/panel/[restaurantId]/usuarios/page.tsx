@@ -1,10 +1,9 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import { Card } from '@/components/ui/Card';
 import { InviteMemberForm } from '@/components/team/InviteMemberForm';
 import { cancelInvitation } from '@/lib/actions/team';
-import { getPanelContext } from '@/lib/auth/guards';
-import { can, ROLE_LABELS, ROLES, type Role } from '@/lib/permissions';
+import { requirePanelAccess } from '@/lib/auth/guards';
+import { ROLE_LABELS, ROLES, type Role } from '@/lib/permissions';
 import { createClient } from '@/lib/supabase/server';
 import { MemberRow } from './MemberRow';
 
@@ -15,8 +14,7 @@ type InvitationRow = { id: string; email: string; role: Role; expires_at: string
 
 export default async function TeamPage({ params }: { params: Promise<{ restaurantId: string }> }) {
   const { restaurantId } = await params;
-  const ctx = await getPanelContext(restaurantId);
-  if (!can(ctx.role, 'users.manage')) notFound();
+  const ctx = await requirePanelAccess(restaurantId, 'users.manage');
   const editable = !ctx.readOnly;
 
   const supabase = await createClient();

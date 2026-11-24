@@ -73,3 +73,14 @@ export async function requirePermission(restaurantId: string, permission: Permis
   }
   return ctx;
 }
+
+/**
+ * Para páginas del panel: 404 si el restaurante está desactivado (salvo soporte de FByte)
+ * o si el rol no tiene el permiso pedido.
+ */
+export async function requirePanelAccess(restaurantId: string, permission?: Permission): Promise<PanelContext> {
+  const ctx = await getPanelContext(restaurantId);
+  if (ctx.restaurant.status === 'disabled' && !ctx.readOnly) notFound();
+  if (permission && !can(ctx.role, permission)) notFound();
+  return ctx;
+}
