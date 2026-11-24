@@ -54,7 +54,8 @@ export async function changeMemberRole(_prev: FormState, fd: FormData): Promise<
   const restaurantId = String(fd.get('restaurantId') ?? '');
   const userId = String(fd.get('userId') ?? '');
   const role = String(fd.get('role') ?? '') as Role;
-  if (!ROLES.includes(role) || !uuidSchema.safeParse(userId).success) return { error: 'Elige un rol.' };
+  if (!ROLES.includes(role)) return { error: 'Elige un rol.' };
+  if (!uuidSchema.safeParse(userId).success) return { error: mapDbError(undefined) };
   try {
     await assertCanManageTeam(restaurantId);
     const supabase = await createClient();

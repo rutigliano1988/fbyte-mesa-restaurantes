@@ -5,7 +5,7 @@ import { Button, buttonClass } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { InviteMemberForm } from '@/components/team/InviteMemberForm';
-import type { RestaurantStatus } from '@/lib/auth/guards';
+import { requirePlatformAdmin, type RestaurantStatus } from '@/lib/auth/guards';
 import { ROLE_LABELS, type Role } from '@/lib/permissions';
 import { createClient } from '@/lib/supabase/server';
 import { uuidSchema } from '@/lib/validation/schemas';
@@ -17,6 +17,7 @@ type TeamRow = { user_id: string; full_name: string; email: string; role: Role }
 type InvitationRow = { id: string; email: string; role: Role; expires_at: string; accepted_at: string | null };
 
 export default async function AdminRestaurantPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePlatformAdmin();
   const { id } = await params;
   if (!uuidSchema.safeParse(id).success) notFound();
   const supabase = await createClient();

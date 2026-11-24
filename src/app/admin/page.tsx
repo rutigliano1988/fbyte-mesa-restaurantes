@@ -4,6 +4,7 @@ import { buttonClass } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import type { RestaurantStatus } from '@/lib/auth/guards';
+import { requirePlatformAdmin } from '@/lib/auth/guards';
 import { createClient } from '@/lib/supabase/server';
 
 export const metadata: Metadata = { title: 'Restaurantes' };
@@ -11,6 +12,7 @@ export const metadata: Metadata = { title: 'Restaurantes' };
 type Row = { id: string; name: string; slug: string; status: RestaurantStatus; created_at: string };
 
 export default async function AdminHome() {
+  await requirePlatformAdmin();
   const supabase = await createClient();
   const { data } = await supabase.from('restaurants').select('id, name, slug, status, created_at').order('created_at', { ascending: false });
   const rows = (data ?? []) as Row[];
@@ -48,7 +50,7 @@ export default async function AdminHome() {
               >
                 <span className="flex flex-col">
                   <span className="font-bold">{r.name}</span>
-                  <span className="text-sm text-muted">/{r.slug} · alta {new Date(r.created_at).toLocaleDateString('es-ES')}</span>
+                  <span className="text-sm text-muted">/{r.slug} · alta {new Date(r.created_at).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' })}</span>
                 </span>
                 <StatusBadge status={r.status} />
               </Link>
