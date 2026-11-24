@@ -3,7 +3,7 @@
 ## 1. Supabase
 1. Crea un proyecto en la región **EU Central (Frankfurt)**.
 2. Aplica las migraciones de `supabase/migrations/` **en orden** (SQL Editor, `supabase db push` o la herramienta MCP `apply_migration`).
-   Después, revisa los avisos de seguridad y rendimiento con `get_advisors` (MCP de Supabase) o en Advisors del panel: no debe quedar ningún aviso de seguridad.
+   Después, revisa los avisos de seguridad y rendimiento con `get_advisors` (MCP de Supabase) o en Advisors del panel: es normal que queden avisos 0028/0029 (funciones `SECURITY DEFINER` ejecutables): `get_invitation` para `anon` y las funciones de negocio y de permisos (`is_member`, `has_role`, `my_role`, `belongs_to`, `is_platform_admin`, `my_restaurants`, `create_restaurant`, `create_invitation`, `accept_invitation`, `set_restaurant_status`, `log_admin_view`, `restaurant_team`) para `authenticated`. Son intencionados: **no les quites los permisos**, porque las políticas RLS dependen de ellos. Cualquier otro aviso de seguridad sí hay que corregirlo.
 3. Settings → API Keys: copia la *publishable key* y la *secret key* en `.env.local` (ver `.env.example`).
 4. Authentication → URL Configuration:
    - **Site URL**: la URL pública (en local `http://localhost:3000`).
@@ -57,5 +57,6 @@ Pruebas: `pnpm test` (unitarias y de BD; la BD de pruebas se levanta sola en el 
 ## 5. Vercel
 1. Importa el repositorio de GitHub.
 2. Variables de entorno: todas las de `.env.example`, con `NEXT_PUBLIC_SITE_URL` = URL de producción.
+   En las vistas previas, define `NEXT_PUBLIC_SITE_URL` en el entorno *Preview* (por ejemplo, la URL fija de la rama), o acepta que los enlaces de invitación y recuperación apunten al sitio de desarrollo.
    - **Nunca des la clave secreta de producción (`SUPABASE_SECRET_KEY`) a las vistas previas (Preview).** En el entorno Preview de Vercel usa las claves de un proyecto de Supabase de **desarrollo**, aparte del de producción.
 3. Cada push a `main` despliega a producción; cada PR crea una vista previa.
