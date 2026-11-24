@@ -10,6 +10,7 @@ it.each([
   ['INVALID_INVITATION', 'Esta invitación ya no es válida. Pide que te la reenvíen.'],
   ['EMAIL_MISMATCH', 'Esta invitación es para otro email. Entra con la cuenta correcta.'],
   ['INVALID_EMAIL', 'Ese email no parece correcto.'],
+  ['new row for relation "restaurants" violates check constraint "restaurants_slug_check"', 'La dirección solo puede llevar minúsculas, números y guiones.'],
 ])('%s → mensaje claro', (raw, msg) => {
   expect(mapDbError(raw)).toBe(msg);
 });

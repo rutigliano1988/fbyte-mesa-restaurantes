@@ -34,3 +34,22 @@ describe('otros esquemas', () => {
     expect(newPasswordSchema.safeParse({ password: 'larga-segura', confirm: 'otra-cosa' }).success).toBe(false);
   });
 });
+
+describe('mensajes en castellano', () => {
+  it('un restaurante sin datos marca los tres campos como obligatorios', () => {
+    const r = createRestaurantSchema.safeParse({});
+    expect(r.success).toBe(false);
+    if (r.success) return;
+    const errors = fieldErrorsFrom(r.error);
+    expect(errors.name).toBe('Este campo es obligatorio.');
+    expect(errors.slug).toBe('Este campo es obligatorio.');
+    expect(errors.adminEmail).toBe('Este campo es obligatorio.');
+  });
+
+  it('una contraseña de 73 caracteres da el mensaje de máximo en castellano', () => {
+    const r = newAccountSchema.safeParse({ fullName: 'Pepe', password: 'a'.repeat(73) });
+    expect(r.success).toBe(false);
+    if (r.success) return;
+    expect(fieldErrorsFrom(r.error).password).toBe('La contraseña puede tener como mucho 72 caracteres.');
+  });
+});

@@ -1,5 +1,5 @@
 export type Role = 'admin' | 'manager' | 'staff';
-export const ROLES: readonly Role[] = ['admin', 'manager', 'staff'];
+export const ROLES = ['admin', 'manager', 'staff'] as const satisfies readonly Role[];
 
 export const ROLE_LABELS: Record<Role, string> = {
   admin: 'Administrador',

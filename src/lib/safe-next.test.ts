@@ -15,3 +15,9 @@ it('rechaza destinos externos o raros', () => {
 it('admite un fallback propio', () => {
   expect(safeNext(null, '/admin')).toBe('/admin');
 });
+
+it('rechaza caracteres de control y barras invertidas en cualquier posición', () => {
+  for (const bad of ['/\t/evil.com', '/\n/evil.com', '/a\\b']) {
+    expect(safeNext(bad)).toBe('/panel');
+  }
+});
