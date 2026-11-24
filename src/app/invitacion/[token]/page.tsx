@@ -9,7 +9,8 @@ import { ROLE_LABELS, type Role } from '@/lib/permissions';
 import { createClient } from '@/lib/supabase/server';
 import { AcceptButton, NewAccountForm } from './AcceptForms';
 
-export const metadata: Metadata = { title: 'Invitación', robots: { index: false } };
+// no-referrer: el token va en la URL y no debe filtrarse a otros sitios.
+export const metadata: Metadata = { title: 'Invitación', robots: { index: false }, referrer: 'no-referrer' };
 
 type Invitation = { restaurant_id: string; restaurant_name: string; email: string; role: Role; has_account: boolean };
 
