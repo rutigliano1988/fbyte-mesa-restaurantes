@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { RESERVED_SLUGS } from '../../src/lib/slug';
-import { addMember, as, createUser, expectDbError, insertRestaurant, pool, tx } from './helpers';
+import { addMember, as, asSuperuser, createUser, expectDbError, insertRestaurant, pool, tx } from './helpers';
 
 afterAll(() => pool.end());
 
@@ -175,5 +175,86 @@ describe('slugs', () => {
     tx(async (c) => {
       const { rows } = await c.query<{ slug: string }>('select slug from public.reserved_slugs order by slug');
       expect(rows.map((r) => r.slug)).toEqual([...RESERVED_SLUGS].sort());
+    }));
+});
+
+describe('borrados y aislamiento de escritura', () => {
+  it('borrar un restaurante con administrador funciona y elimina sus miembros', () =>
+    tx(async (c) => {
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a' });
+      const admin = await createUser(c, 'admin@example.com');
+      await addMember(c, a, admin.id, 'admin');
+      await asSuperuser(c);
+      const res = await c.query('delete from public.restaurants where id = $1', [a]);
+      expect(res.rowCount).toBe(1);
+      const m = await c.query('select 1 from public.restaurant_members where restaurant_id = $1', [a]);
+      expect(m.rowCount).toBe(0);
+    }));
+
+  it('borrar la cuenta del único administrador funciona', () =>
+    tx(async (c) => {
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a' });
+      const admin = await createUser(c, 'admin@example.com');
+      await addMember(c, a, admin.id, 'admin');
+      await asSuperuser(c);
+      const res = await c.query('delete from auth.users where id = $1', [admin.id]);
+      expect(res.rowCount).toBe(1);
+    }));
+
+  it('el único administrador no puede borrar su propia pertenencia', () =>
+    tx(async (c) => {
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a' });
+      const admin = await createUser(c, 'admin@example.com');
+      await addMember(c, a, admin.id, 'admin');
+      await as(c, admin);
+      await expectDbError(
+        c,
+        'delete from public.restaurant_members where restaurant_id = $1 and user_id = $2',
+        [a, admin.id],
+        /LAST_ADMIN/,
+      );
+    }));
+
+  it('solo el administrador borra miembros', () =>
+    tx(async (c) => {
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a' });
+      const admin = await createUser(c, 'admin@example.com');
+      const manager = await createUser(c, 'enc@example.com');
+      const staff = await createUser(c, 'sala@example.com');
+      await addMember(c, a, admin.id, 'admin');
+      await addMember(c, a, manager.id, 'manager');
+      await addMember(c, a, staff.id, 'staff');
+      const del = 'delete from public.restaurant_members where restaurant_id = $1 and user_id = $2';
+      await as(c, staff);
+      expect((await c.query(del, [a, manager.id])).rowCount).toBe(0);
+      await as(c, manager);
+      expect((await c.query(del, [a, staff.id])).rowCount).toBe(0);
+      await as(c, admin);
+      expect((await c.query(del, [a, staff.id])).rowCount).toBe(1);
+    }));
+
+  it('un administrador no escribe en otro restaurante', () =>
+    tx(async (c) => {
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a' });
+      const b = await insertRestaurant(c, { name: 'Rest B', slug: 'rest-b' });
+      const ua = await createUser(c, 'ana@example.com');
+      const ub = await createUser(c, 'beto@example.com');
+      const sb = await createUser(c, 'sala-b@example.com');
+      await addMember(c, a, ua.id, 'admin');
+      await addMember(c, b, ub.id, 'admin');
+      await addMember(c, b, sb.id, 'staff');
+      await c.query(
+        "insert into public.invitations (restaurant_id, email, role, token_hash) values ($1, 'x@example.com', 'staff', 'dummy-hash')",
+        [b],
+      );
+      await as(c, ua);
+      expect((await c.query("update public.restaurants set name = 'Rest X' where id = $1", [b])).rowCount).toBe(0);
+      expect(
+        (await c.query("update public.restaurant_members set role = 'manager' where restaurant_id = $1 and user_id = $2", [b, sb.id])).rowCount,
+      ).toBe(0);
+      expect(
+        (await c.query('delete from public.restaurant_members where restaurant_id = $1 and user_id = $2', [b, sb.id])).rowCount,
+      ).toBe(0);
+      expect((await c.query('delete from public.invitations where restaurant_id = $1', [b])).rowCount).toBe(0);
     }));
 });

@@ -149,7 +149,16 @@ $$;
 create or replace function public.protect_last_admin() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
+  if tg_op = 'DELETE' and (
+    not exists (select 1 from public.restaurants r where r.id = old.restaurant_id)
+    or not exists (select 1 from auth.users u where u.id = old.user_id)
+  ) then
+    -- Borrado en cascada (restaurante o cuenta eliminados): la regla solo protege acciones del equipo.
+    return old;
+  end if;
   if old.role = 'admin' and (tg_op = 'DELETE' or new.role <> 'admin') then
+    -- Bloqueo por restaurante: dos bajas concurrentes no pueden pasar a la vez.
+    perform 1 from public.restaurants r where r.id = old.restaurant_id for update;
     if not exists (
       select 1 from public.restaurant_members m
       where m.restaurant_id = old.restaurant_id and m.role = 'admin' and m.user_id <> old.user_id
@@ -176,6 +185,7 @@ alter table public.admin_audit_log enable row level security;
 
 revoke all on public.profiles, public.reserved_slugs, public.restaurants, public.restaurant_members,
   public.invitations, public.admin_audit_log from anon, authenticated;
+revoke all on sequence public.admin_audit_log_id_seq from anon, authenticated;
 
 -- profiles
 grant select on public.profiles to authenticated;
