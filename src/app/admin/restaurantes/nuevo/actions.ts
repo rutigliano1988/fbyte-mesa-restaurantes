@@ -1,12 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import type { InviteState } from '@/lib/actions/team';
 import { requirePlatformAdmin } from '@/lib/auth/guards';
 import { mapDbError } from '@/lib/db-errors';
 import { sendInvitationEmail } from '@/lib/email/invitation';
 import { fieldErrorsFrom } from '@/lib/forms';
-import { invitationUrl } from '@/lib/invitations';
+import { canShowInviteLink, invitationUrl, inviteOutcome, type InviteState } from '@/lib/invitations';
 import { createClient } from '@/lib/supabase/server';
 import { createRestaurantSchema } from '@/lib/validation/schemas';
 
@@ -30,5 +29,7 @@ export async function createRestaurant(_prev: CreateRestaurantState, fd: FormDat
   const url = invitationUrl(data.invitation_token);
   const sent = await sendInvitationEmail({ to: parsed.data.adminEmail, restaurantName: parsed.data.name, role: 'admin', inviteUrl: url });
   revalidatePath('/admin');
-  return { success: 'Restaurante creado.', restaurantId: data.restaurant_id, inviteUrl: url, email: parsed.data.adminEmail, emailSent: sent.ok };
+  // Solo FByte llega hasta aquí, así que siempre ve el enlace.
+  const outcome = inviteOutcome({ url, email: parsed.data.adminEmail, emailSent: sent.ok, showLink: canShowInviteLink(true) });
+  return { ...outcome, restaurantId: data.restaurant_id };
 }

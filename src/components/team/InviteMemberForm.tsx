@@ -5,7 +5,8 @@ import { Field } from '@/components/ui/Field';
 import { Notice } from '@/components/ui/Notice';
 import { SelectField } from '@/components/ui/SelectField';
 import { SubmitButton } from '@/components/ui/SubmitButton';
-import { inviteMember, type InviteState } from '@/lib/actions/team';
+import { inviteMember } from '@/lib/actions/team';
+import type { InviteState } from '@/lib/invitations';
 import { ROLE_LABELS, type Role } from '@/lib/permissions';
 
 export function InviteMemberForm({
@@ -24,22 +25,20 @@ export function InviteMemberForm({
   const [state, action] = useActionState<InviteState, FormData>(inviteMember, {});
   return (
     <div className="flex flex-col gap-4">
+      {state.emailSent && !state.inviteUrl && <Notice tone="success">{state.success}</Notice>}
       {state.inviteUrl && (
         <Notice tone={state.emailSent ? 'success' : 'info'}>
           {state.emailSent
             ? `Listo. Hemos enviado la invitación a ${state.email}.`
             : `Hemos creado la invitación, pero no pudimos enviar el email a ${state.email}.`}{' '}
           Si no le llega, pásale este enlace (caduca en 7 días):
-          <label className="mt-2 block">
-            <span className="sr-only">Enlace de invitación</span>
-            <input
-              aria-label="Enlace de invitación"
-              readOnly
-              value={state.inviteUrl}
-              onFocus={(e) => e.currentTarget.select()}
-              className="mt-1 w-full rounded-[6px] border-2 border-ink/25 bg-white px-3 py-2 font-mono text-xs"
-            />
-          </label>
+          <input
+            aria-label="Enlace de invitación"
+            readOnly
+            value={state.inviteUrl}
+            onFocus={(e) => e.currentTarget.select()}
+            className="mt-2 block w-full rounded-[6px] border-2 border-ink/25 bg-white px-3 py-2 font-mono text-xs"
+          />
         </Notice>
       )}
       {state.error && <Notice tone="error">{state.error}</Notice>}

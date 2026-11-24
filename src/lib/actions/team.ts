@@ -6,12 +6,10 @@ import { getPanelContext, isPlatformAdmin } from '@/lib/auth/guards';
 import { mapDbError } from '@/lib/db-errors';
 import { sendInvitationEmail } from '@/lib/email/invitation';
 import { fieldErrorsFrom, type FormState } from '@/lib/forms';
-import { invitationUrl } from '@/lib/invitations';
+import { canShowInviteLink, invitationUrl, inviteOutcome, type InviteState } from '@/lib/invitations';
 import { can, ROLES, type Role } from '@/lib/permissions';
 import { createClient } from '@/lib/supabase/server';
 import { inviteMemberSchema, uuidSchema } from '@/lib/validation/schemas';
-
-export type InviteState = FormState & { inviteUrl?: string; email?: string; emailSent?: boolean };
 
 /** Puede gestionar el equipo: administrador del restaurante (no en modo soporte) o FByte. */
 async function assertCanManageTeam(restaurantId: string): Promise<{ restaurantName: string }> {
@@ -43,7 +41,9 @@ export async function inviteMember(_prev: InviteState, fd: FormData): Promise<In
     const url = invitationUrl(token);
     const sent = await sendInvitationEmail({ to: parsed.data.email, restaurantName, role: parsed.data.role, inviteUrl: url });
     revalidateTeam(restaurantId);
-    return { success: 'Invitación creada.', inviteUrl: url, email: parsed.data.email, emailSent: sent.ok };
+    // A un administrador de restaurante en producción nunca le devolvemos el enlace.
+    const showLink = canShowInviteLink(await isPlatformAdmin());
+    return inviteOutcome({ url, email: parsed.data.email, emailSent: sent.ok, showLink });
   } catch (e) {
     unstable_rethrow(e);
     return { error: mapDbError(e instanceof Error ? e.message : undefined) };

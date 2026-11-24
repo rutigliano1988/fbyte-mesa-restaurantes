@@ -15,21 +15,25 @@ export function CreateRestaurantForm() {
   const [slug, setSlug] = useState('');
   const [slugTouched, setSlugTouched] = useState(false);
 
-  if (state.restaurantId && state.inviteUrl) {
+  if (state.restaurantId) {
     return (
       <div className="flex flex-col gap-4">
         <Notice tone={state.emailSent ? 'success' : 'info'}>
           {state.emailSent
             ? `Restaurante creado. Hemos enviado la invitación a ${state.email}.`
             : `Restaurante creado, pero no pudimos enviar el email a ${state.email}.`}{' '}
-          Si no le llega, pásale este enlace (caduca en 7 días):
-          <input
-            aria-label="Enlace de invitación"
-            readOnly
-            value={state.inviteUrl}
-            onFocus={(e) => e.currentTarget.select()}
-            className="mt-2 w-full rounded-[6px] border-2 border-ink/25 bg-white px-3 py-2 font-mono text-xs"
-          />
+          {state.inviteUrl && (
+            <>
+              Si no le llega, pásale este enlace (caduca en 7 días):
+              <input
+                aria-label="Enlace de invitación"
+                readOnly
+                value={state.inviteUrl}
+                onFocus={(e) => e.currentTarget.select()}
+                className="mt-2 w-full rounded-[6px] border-2 border-ink/25 bg-white px-3 py-2 font-mono text-xs"
+              />
+            </>
+          )}
         </Notice>
         <Link href={`/admin/restaurantes/${state.restaurantId}`} className={buttonClass('secondary')}>
           Ver el restaurante

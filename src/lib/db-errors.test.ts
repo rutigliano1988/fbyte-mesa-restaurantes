@@ -11,6 +11,9 @@ it.each([
   ['EMAIL_MISMATCH', 'Esta invitación es para otro email. Entra con la cuenta correcta.'],
   ['INVALID_EMAIL', 'Ese email no parece correcto.'],
   ['new row for relation "restaurants" violates check constraint "restaurants_slug_check"', 'La dirección solo puede llevar minúsculas, números y guiones.'],
+  ['RESTAURANT_DISABLED', 'Este restaurante está desactivado. Reactívalo antes de invitar a nadie.'],
+  ['NOT_FOUND', 'No encontramos ese restaurante.'],
+  ['NOT_AUTHENTICATED', 'Tu sesión ha caducado. Vuelve a entrar.'],
 ])('%s → mensaje claro', (raw, msg) => {
   expect(mapDbError(raw)).toBe(msg);
 });

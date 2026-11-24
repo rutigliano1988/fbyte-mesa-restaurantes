@@ -1,5 +1,6 @@
 import 'server-only';
 import { z } from 'zod';
+import { BRAND } from '@/config/brand';
 
 const schema = z.object({
   NEXT_PUBLIC_SUPABASE_URL: z.url(),
@@ -7,7 +8,7 @@ const schema = z.object({
   SUPABASE_SECRET_KEY: z.string().min(1),
   NEXT_PUBLIC_SITE_URL: z.url(),
   RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().min(3).default('Mesa <onboarding@resend.dev>'),
+  EMAIL_FROM: z.string().min(3).default(`${BRAND.productName} <onboarding@resend.dev>`),
 });
 
 export type ServerEnv = z.infer<typeof schema>;
@@ -30,4 +31,16 @@ export function serverEnv(): ServerEnv {
 
 export function siteUrl(): string {
   return serverEnv().NEXT_PUBLIC_SITE_URL.replace(/\/+$/, '');
+}
+
+/** Producción real: VERCEL_ENV manda si existe (las previews no son producción); si no, NODE_ENV. */
+export function isProductionDeploy(): boolean {
+  const vercelEnv = process.env.VERCEL_ENV;
+  if (vercelEnv) return vercelEnv === 'production';
+  return process.env.NODE_ENV === 'production';
+}
+
+/** Hay clave de Resend, así que los emails se envían de verdad. */
+export function emailConfigured(): boolean {
+  return Boolean(process.env.RESEND_API_KEY);
 }

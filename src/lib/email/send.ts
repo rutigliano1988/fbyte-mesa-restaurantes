@@ -1,6 +1,6 @@
 import 'server-only';
 import { Resend } from 'resend';
-import { serverEnv } from '@/lib/env';
+import { isProductionDeploy, serverEnv } from '@/lib/env';
 
 export type SendResult = { ok: true; id?: string } | { ok: false; error: string };
 
@@ -12,8 +12,13 @@ export async function sendEmail(input: {
 }): Promise<SendResult> {
   const env = serverEnv();
   if (!env.RESEND_API_KEY) {
-    // Modo desarrollo: sin clave no se envía nada.
-    console.info(`[email:dev] a=${input.to} asunto="${input.subject}"`);
+    if (isProductionDeploy()) {
+      // En producción nunca fingimos que se ha enviado.
+      console.error('[email] falta RESEND_API_KEY en producción: no se envía nada', { subject: input.subject });
+      return { ok: false, error: 'EMAIL_NOT_CONFIGURED' };
+    }
+    // Modo desarrollo: sin clave no se envía nada (y no registramos el destinatario).
+    console.info(`[email:dev] asunto="${input.subject}"`);
     return { ok: true };
   }
   try {

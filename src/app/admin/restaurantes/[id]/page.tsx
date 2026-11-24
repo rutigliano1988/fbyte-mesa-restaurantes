@@ -5,6 +5,7 @@ import { Button, buttonClass } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { InviteMemberForm } from '@/components/team/InviteMemberForm';
+import { cancelInvitation } from '@/lib/actions/team';
 import { requirePlatformAdmin, type RestaurantStatus } from '@/lib/auth/guards';
 import { ROLE_LABELS, type Role } from '@/lib/permissions';
 import { createClient } from '@/lib/supabase/server';
@@ -25,10 +26,17 @@ export default async function AdminRestaurantPage({ params }: { params: Promise<
   if (!restaurant) notFound();
   const [{ data: team }, { data: invitations }] = await Promise.all([
     supabase.rpc('restaurant_team', { p_restaurant_id: id }),
-    supabase.from('invitations').select('id, email, role, expires_at, accepted_at').eq('restaurant_id', id).is('accepted_at', null).order('created_at', { ascending: false }),
+    supabase
+      .from('invitations')
+      .select('id, email, role, expires_at, accepted_at')
+      .eq('restaurant_id', id)
+      .is('accepted_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false }),
   ]);
   const status = restaurant.status as RestaurantStatus;
-  const pendingAdmin = (invitations as InvitationRow[] | null)?.find((i) => i.role === 'admin');
+  const pending = (invitations as InvitationRow[] | null) ?? [];
+  const pendingAdmin = pending.find((i) => i.role === 'admin');
 
   return (
     <div className="flex flex-col gap-6">
@@ -90,9 +98,37 @@ export default async function AdminRestaurantPage({ params }: { params: Promise<
         )}
       </Card>
 
+      {pending.length > 0 && (
+        <Card>
+          <h2 className="text-xl font-extrabold">Invitaciones pendientes</h2>
+          <ul className="mt-2">
+            {pending.map((i) => (
+              <li key={i.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-ink/10 py-3">
+                <span>
+                  {i.email}{' '}
+                  <span className="text-sm text-muted">
+                    · {ROLE_LABELS[i.role]} · caduca el{' '}
+                    {new Date(i.expires_at).toLocaleDateString('es-ES', { timeZone: 'Europe/Madrid' })}
+                  </span>
+                </span>
+                <form action={cancelInvitation}>
+                  <input type="hidden" name="restaurantId" value={id} />
+                  <input type="hidden" name="invitationId" value={i.id} />
+                  <button type="submit" className="text-sm font-bold text-navy hover:underline">
+                    Cancelar
+                  </button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
+
       <Card>
         <h2 className="text-xl font-extrabold">Reenviar invitación de administrador</h2>
-        <p className="mb-4 mt-1 text-sm text-muted">Crea un enlace nuevo; el anterior deja de funcionar.</p>
+        <p className="mb-4 mt-1 text-sm text-muted">
+          Crea una invitación nueva. Las invitaciones de administrador que estén pendientes dejan de funcionar.
+        </p>
         <InviteMemberForm restaurantId={id} roles={['admin']} defaultRole="admin" defaultEmail={pendingAdmin?.email} submitLabel="Reenviar invitación" />
       </Card>
     </div>
