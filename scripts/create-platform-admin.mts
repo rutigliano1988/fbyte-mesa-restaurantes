@@ -19,6 +19,7 @@ if (!url || !secret) {
 const supabase = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
 
 let userId: string | undefined;
+let alreadyExisted = false;
 const { data: created, error } = await supabase.auth.admin.createUser({
   email,
   password,
@@ -27,7 +28,8 @@ const { data: created, error } = await supabase.auth.admin.createUser({
 });
 if (created?.user) {
   userId = created.user.id;
-} else if (error && /already|registered|exists/i.test(error.message)) {
+} else if (error && (error.code === 'email_exists' || /already|registered|exists/i.test(error.message))) {
+  alreadyExisted = true;
   for (let page = 1; !userId; page++) {
     const { data, error: listError } = await supabase.auth.admin.listUsers({ page, perPage: 200 });
     if (listError) throw listError;
@@ -42,6 +44,15 @@ if (!userId) {
   process.exit(1);
 }
 
-const { error: updateError } = await supabase.from('profiles').update({ is_platform_admin: true }).eq('user_id', userId);
+const { data: updated, error: updateError } = await supabase
+  .from('profiles')
+  .update({ is_platform_admin: true })
+  .eq('user_id', userId)
+  .select('user_id');
 if (updateError) throw updateError;
+if (updated?.length !== 1) {
+  console.error(`No encontré el perfil de ${email}. ¿Están aplicadas las migraciones? No se ha cambiado nada.`);
+  process.exit(1);
+}
 console.log(`✔ ${email} ya es superadmin de FByte`);
+if (alreadyExisted) console.log('La contraseña no se ha cambiado (el usuario ya existía).');
