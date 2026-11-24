@@ -258,3 +258,97 @@ describe('borrados y aislamiento de escritura', () => {
       expect((await c.query('delete from public.invitations where restaurant_id = $1', [b])).rowCount).toBe(0);
     }));
 });
+
+describe('idiomas del restaurante', () => {
+  it('rechaza un idioma por defecto desconocido', () =>
+    tx(async (c) => {
+      await expectDbError(
+        c,
+        "insert into public.restaurants (name, slug, default_locale, enabled_locales) values ('Rest X', 'rest-x', 'xx', '{es,xx}')",
+        [],
+        /restaurants_default_locale_check|restaurants_enabled_locales_check/,
+      );
+    }));
+
+  it('rechaza idiomas activos sin castellano o sin el idioma por defecto', () =>
+    tx(async (c) => {
+      await expectDbError(
+        c,
+        "insert into public.restaurants (name, slug, default_locale, enabled_locales) values ('Rest X', 'rest-x', 'en', '{en}')",
+        [],
+        /restaurants_enabled_locales_es_check/,
+      );
+      await expectDbError(
+        c,
+        "insert into public.restaurants (name, slug, default_locale, enabled_locales) values ('Rest X', 'rest-x', 'en', '{es}')",
+        [],
+        /restaurants_default_locale_enabled_check/,
+      );
+      await expectDbError(
+        c,
+        "insert into public.restaurants (name, slug, enabled_locales) values ('Rest X', 'rest-x', '{es,zz}')",
+        [],
+        /restaurants_enabled_locales_check/,
+      );
+    }));
+
+  it('acepta una combinación válida', () =>
+    tx(async (c) => {
+      const res = await c.query(
+        "insert into public.restaurants (name, slug, default_locale, enabled_locales) values ('Rest X', 'rest-x', 'ca', '{es,ca,en}')",
+      );
+      expect(res.rowCount).toBe(1);
+    }));
+});
+
+describe('invitaciones pendientes únicas', () => {
+  it('no puede haber dos invitaciones pendientes para el mismo email y restaurante', () =>
+    tx(async (c) => {
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a' });
+      const ins = "insert into public.invitations (restaurant_id, email, role, token_hash) values ($1, 'x@example.com', 'staff', $2)";
+      await c.query(ins, [a, 'hash-1']);
+      await expectDbError(c, ins, [a, 'hash-2'], /invitations_pending_unique/);
+      await c.query('update public.invitations set accepted_at = now() where restaurant_id = $1', [a]);
+      expect((await c.query(ins, [a, 'hash-3'])).rowCount).toBe(1);
+    }));
+});
+
+describe('privilegios de funciones (advisors)', () => {
+  it('nadie ejecuta directamente las funciones de trigger', () =>
+    tx(async (c) => {
+      const fns = [
+        'public.handle_new_user()',
+        'public.protect_last_admin()',
+        'public.check_slug_not_reserved()',
+        'public.set_updated_at()',
+      ];
+      for (const role of ['anon', 'authenticated']) {
+        for (const fn of fns) {
+          const { rows } = await c.query('select has_function_privilege($1, $2, $3) as ok', [role, fn, 'execute']);
+          expect(rows[0].ok, `${role} → ${fn}`).toBe(false);
+        }
+      }
+    }));
+
+  it('los triggers siguen funcionando para usuarios autenticados', () =>
+    tx(async (c) => {
+      const u = await createUser(c, 'ana@example.com');
+      await as(c, u);
+      const res = await c.query("update public.profiles set full_name = 'Ana C' where user_id = $1 returning updated_at", [u.id]);
+      expect(res.rowCount).toBe(1);
+    }));
+
+  it('las políticas de perfiles usan (select auth.uid())', () =>
+    tx(async (c) => {
+      const { rows } = await c.query<{ expr: string }>(
+        "select coalesce(qual, '') || ' ' || coalesce(with_check, '') as expr from pg_policies where schemaname = 'public' and tablename = 'profiles'",
+      );
+      expect(rows.length).toBeGreaterThan(0);
+      for (const { expr } of rows) {
+        const total = expr.match(/auth\.uid\(\)/g)?.length ?? 0;
+        const wrapped = expr.match(/SELECT auth\.uid\(\)/g)?.length ?? 0;
+        expect(total).toBeGreaterThan(0);
+        expect(wrapped).toBe(total);
+      }
+    }));
+});

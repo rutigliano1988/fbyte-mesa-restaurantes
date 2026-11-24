@@ -169,3 +169,146 @@ describe('set_restaurant_status, log_admin_view y restaurant_team', () => {
       await expectDbError(c, 'select * from public.restaurant_team($1)', [a], /FORBIDDEN/);
     }));
 });
+
+describe('refuerzos tras la revisión final', () => {
+  it('no se invita en un restaurante desactivado ni en uno que no existe', () =>
+    tx(async (c) => {
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a', status: 'disabled' });
+      const fbyte = await createUser(c, 'fbyte@example.com', { platformAdmin: true });
+      await as(c, fbyte);
+      await expectDbError(c, "select public.create_invitation($1, 'nuevo@example.com', 'admin')", [a], /RESTAURANT_DISABLED/);
+      await expectDbError(
+        c,
+        "select public.create_invitation($1, 'nuevo@example.com', 'admin')",
+        ['00000000-0000-4000-8000-000000000000'],
+        /NOT_FOUND/,
+      );
+    }));
+
+  it('un usuario sin permiso recibe FORBIDDEN aunque el restaurante no exista', () =>
+    tx(async (c) => {
+      const u = await createUser(c, 'ana@example.com');
+      await as(c, u);
+      await expectDbError(
+        c,
+        "select public.create_invitation($1, 'nuevo@example.com', 'staff')",
+        ['00000000-0000-4000-8000-000000000000'],
+        /FORBIDDEN/,
+      );
+    }));
+
+  it('set_restaurant_status sobre un restaurante que no existe da NOT_FOUND y no audita', () =>
+    tx(async (c) => {
+      const fbyte = await createUser(c, 'fbyte@example.com', { platformAdmin: true });
+      await as(c, fbyte);
+      await expectDbError(
+        c,
+        "select public.set_restaurant_status($1, 'active')",
+        ['00000000-0000-4000-8000-000000000000'],
+        /NOT_FOUND/,
+      );
+      await asSuperuser(c);
+      const audit = await c.query("select 1 from public.admin_audit_log where action = 'restaurant.status'");
+      expect(audit.rowCount).toBe(0);
+    }));
+
+  it('FByte al reenviar la invitación de administrador borra todas las pendientes de administrador', () =>
+    tx(async (c) => {
+      const fbyte = await createUser(c, 'fbyte@example.com', { platformAdmin: true });
+      const { restaurantId, token: t1 } = await createRestaurantAs(c, fbyte, 'La Taberna', 'la-taberna', 'pepe@example.com');
+      const admin = await createUser(c, 'admin@example.com');
+      await addMember(c, restaurantId, admin.id, 'admin');
+      await as(c, admin);
+      // Una invitación de sala (no se toca) y otra de administrador creada por el propio restaurante.
+      await c.query("select public.create_invitation($1, 'sala@example.com', 'staff')", [restaurantId]);
+      await c.query("select public.create_invitation($1, 'otro-admin@example.com', 'admin')", [restaurantId]);
+
+      await as(c, fbyte);
+      const t2 = (await c.query("select public.create_invitation($1, 'nueva@example.com', 'admin') as t", [restaurantId])).rows[0].t;
+      await asSuperuser(c);
+      const pending = await c.query(
+        'select email, role from public.invitations where restaurant_id = $1 and accepted_at is null order by email',
+        [restaurantId],
+      );
+      expect(pending.rows).toEqual([
+        { email: 'nueva@example.com', role: 'admin' },
+        { email: 'sala@example.com', role: 'staff' },
+      ]);
+      await as(c, null);
+      expect((await c.query('select * from public.get_invitation($1)', [t1])).rowCount).toBe(0);
+      expect((await c.query('select * from public.get_invitation($1)', [t2])).rowCount).toBe(1);
+    }));
+
+  it('un administrador del restaurante que invita a otro administrador no borra las demás', () =>
+    tx(async (c) => {
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a' });
+      const admin = await createUser(c, 'admin@example.com');
+      await addMember(c, a, admin.id, 'admin');
+      await as(c, admin);
+      await c.query("select public.create_invitation($1, 'uno@example.com', 'admin')", [a]);
+      await c.query("select public.create_invitation($1, 'dos@example.com', 'admin')", [a]);
+      await asSuperuser(c);
+      const pending = await c.query('select email from public.invitations where restaurant_id = $1 and accepted_at is null order by email', [a]);
+      expect(pending.rows).toEqual([{ email: 'dos@example.com' }, { email: 'uno@example.com' }]);
+    }));
+
+  it('aceptar una invitación siendo ya miembro no cambia el rol', () =>
+    tx(async (c) => {
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a' });
+      const admin = await createUser(c, 'admin@example.com');
+      await addMember(c, a, admin.id, 'admin');
+      await as(c, admin);
+      const token = (await c.query("select public.create_invitation($1, 'sala@example.com', 'admin') as t", [a])).rows[0].t;
+      // Entre medias, la persona entra al equipo como sala por otra vía.
+      const sala = await createUser(c, 'sala@example.com');
+      await addMember(c, a, sala.id, 'staff');
+
+      await as(c, sala);
+      const r = await c.query<{ accept_invitation: string }>('select public.accept_invitation($1)', [token]);
+      expect(r.rows[0].accept_invitation).toBe(a);
+      await asSuperuser(c);
+      const m = await c.query('select role from public.restaurant_members where restaurant_id = $1 and user_id = $2', [a, sala.id]);
+      expect(m.rows).toEqual([{ role: 'staff' }]);
+      const inv = await c.query('select accepted_at, accepted_by from public.invitations where restaurant_id = $1', [a]);
+      expect(inv.rows[0].accepted_at).not.toBeNull();
+      expect(inv.rows[0].accepted_by).toBe(sala.id);
+    }));
+});
+
+describe('privilegios de ejecución', () => {
+  it('authenticated no puede llamar a _new_invitation', () =>
+    tx(async (c) => {
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a' });
+      const u = await createUser(c, 'ana@example.com');
+      await addMember(c, a, u.id, 'admin');
+      await as(c, u);
+      await expectDbError(c, "select public._new_invitation($1, 'x@example.com', 'admin')", [a], /permission denied/);
+    }));
+
+  const ANON_FORBIDDEN = [
+    'public.create_restaurant(text, text, text)',
+    'public.create_invitation(uuid, text, public.member_role)',
+    'public.accept_invitation(text)',
+    'public.set_restaurant_status(uuid, public.restaurant_status)',
+    'public.log_admin_view(uuid)',
+    'public.restaurant_team(uuid)',
+    'public.my_restaurants()',
+    'public._new_invitation(uuid, text, public.member_role)',
+  ];
+
+  it.each(ANON_FORBIDDEN)('anon no puede ejecutar %s', (fn) =>
+    tx(async (c) => {
+      const { rows } = await c.query("select has_function_privilege('anon', $1, 'execute') as ok", [fn]);
+      expect(rows[0].ok).toBe(false);
+    }));
+
+  it('anon sí puede ejecutar get_invitation, y una llamada real a create_restaurant falla', () =>
+    tx(async (c) => {
+      const { rows } = await c.query("select has_function_privilege('anon', 'public.get_invitation(text)', 'execute') as ok");
+      expect(rows[0].ok).toBe(true);
+      await as(c, null);
+      await c.query("select * from public.get_invitation('nada')");
+      await expectDbError(c, "select * from public.create_restaurant('Bar', 'bar-x', 'x@example.com')", [], /permission denied/);
+      await expectDbError(c, 'select * from public.my_restaurants()', [], /permission denied/);
+    }));
+});

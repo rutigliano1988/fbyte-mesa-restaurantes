@@ -38,15 +38,30 @@ create or replace function public.create_invitation(p_restaurant_id uuid, p_emai
 returns text language plpgsql security definer set search_path = '' as $$
 declare
   v_email text := lower(trim(p_email));
+  v_status public.restaurant_status;
+  v_platform_admin boolean := public.is_platform_admin();
 begin
-  if auth.uid() is null or not (public.has_role(p_restaurant_id, '{admin}') or public.is_platform_admin()) then
+  -- Primero el permiso: así nadie de fuera averigua qué restaurantes existen.
+  if auth.uid() is null or not (public.has_role(p_restaurant_id, '{admin}') or v_platform_admin) then
     raise exception 'FORBIDDEN' using errcode = '42501';
+  end if;
+  select r.status into v_status from public.restaurants r where r.id = p_restaurant_id;
+  if not found then
+    raise exception 'NOT_FOUND' using errcode = 'P0002';
+  end if;
+  if v_status = 'disabled' then
+    raise exception 'RESTAURANT_DISABLED' using errcode = 'P0001';
   end if;
   if exists (
     select 1 from public.restaurant_members m join auth.users u on u.id = m.user_id
     where m.restaurant_id = p_restaurant_id and lower(u.email) = v_email
   ) then
     raise exception 'ALREADY_MEMBER' using errcode = 'P0001';
+  end if;
+  if p_role = 'admin' and v_platform_admin then
+    -- FByte reenvía la invitación de administrador: solo vale la última.
+    delete from public.invitations i
+     where i.restaurant_id = p_restaurant_id and i.role = 'admin' and i.accepted_at is null;
   end if;
   return public._new_invitation(p_restaurant_id, v_email, p_role);
 end $$;
@@ -88,9 +103,10 @@ begin
   if v_email is distinct from v_inv.email then
     raise exception 'EMAIL_MISMATCH' using errcode = 'P0001';
   end if;
+  -- Si ya es miembro, la invitación se da por usada y su rol no cambia.
   insert into public.restaurant_members (restaurant_id, user_id, role)
   values (v_inv.restaurant_id, auth.uid(), v_inv.role)
-  on conflict (restaurant_id, user_id) do update set role = excluded.role;
+  on conflict (restaurant_id, user_id) do nothing;
   update public.invitations set accepted_at = now(), accepted_by = auth.uid() where id = v_inv.id;
   return v_inv.restaurant_id;
 end $$;
@@ -102,6 +118,9 @@ begin
     raise exception 'FORBIDDEN' using errcode = '42501';
   end if;
   update public.restaurants set status = p_status where id = p_restaurant_id;
+  if not found then
+    raise exception 'NOT_FOUND' using errcode = 'P0002';
+  end if;
   insert into public.admin_audit_log (actor_id, action, restaurant_id, details)
   values (auth.uid(), 'restaurant.status', p_restaurant_id, jsonb_build_object('status', p_status));
 end $$;

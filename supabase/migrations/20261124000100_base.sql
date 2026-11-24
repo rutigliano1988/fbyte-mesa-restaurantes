@@ -47,8 +47,12 @@ create table public.restaurants (
   name text not null check (length(trim(name)) between 2 and 120),
   status public.restaurant_status not null default 'setup',
   timezone text not null default 'Europe/Madrid' check (timezone in ('Europe/Madrid', 'Atlantic/Canary')),
-  default_locale text not null default 'es',
-  enabled_locales text[] not null default '{es}',
+  default_locale text not null default 'es'
+    constraint restaurants_default_locale_check check (default_locale in ('es', 'en', 'ca', 'fr', 'de', 'it')),
+  enabled_locales text[] not null default '{es}'
+    constraint restaurants_enabled_locales_check check (enabled_locales <@ array['es', 'en', 'ca', 'fr', 'de', 'it']),
+  constraint restaurants_enabled_locales_es_check check ('es' = any (enabled_locales)),
+  constraint restaurants_default_locale_enabled_check check (default_locale = any (enabled_locales)),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -90,6 +94,8 @@ create table public.invitations (
   created_at timestamptz not null default now()
 );
 create index invitations_restaurant_idx on public.invitations (restaurant_id);
+-- Como mucho una invitación pendiente por persona y restaurante.
+create unique index invitations_pending_unique on public.invitations (restaurant_id, email) where accepted_at is null;
 
 -- Auditoría de FByte -------------------------------------------------------------
 create table public.admin_audit_log (
@@ -158,7 +164,7 @@ begin
   end if;
   if old.role = 'admin' and (tg_op = 'DELETE' or new.role <> 'admin') then
     -- Bloqueo por restaurante: dos bajas concurrentes no pueden pasar a la vez.
-    perform 1 from public.restaurants r where r.id = old.restaurant_id for update;
+    perform 1 from public.restaurants r where r.id = old.restaurant_id for no key update;
     if not exists (
       select 1 from public.restaurant_members m
       where m.restaurant_id = old.restaurant_id and m.role = 'admin' and m.user_id <> old.user_id
@@ -191,7 +197,7 @@ revoke all on sequence public.admin_audit_log_id_seq from anon, authenticated;
 grant select on public.profiles to authenticated;
 grant update (full_name) on public.profiles to authenticated;
 create policy profiles_select on public.profiles for select to authenticated using (
-  user_id = auth.uid()
+  user_id = (select auth.uid())
   or public.is_platform_admin()
   or exists (
     select 1 from public.restaurant_members other
@@ -199,7 +205,7 @@ create policy profiles_select on public.profiles for select to authenticated usi
   )
 );
 create policy profiles_update_own on public.profiles for update to authenticated
-  using (user_id = auth.uid()) with check (user_id = auth.uid());
+  using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
 
 -- reserved_slugs (lectura pública)
 grant select on public.reserved_slugs to anon, authenticated;
@@ -234,6 +240,10 @@ create policy invitations_delete on public.invitations for delete to authenticat
 -- admin_audit_log
 grant select on public.admin_audit_log to authenticated;
 create policy audit_select on public.admin_audit_log for select to authenticated using (public.is_platform_admin());
+
+-- Funciones de trigger: nadie las llama directamente.
+revoke execute on function public.handle_new_user(), public.protect_last_admin(), public.check_slug_not_reserved(),
+  public.set_updated_at() from public, anon, authenticated;
 
 -- Funciones: solo usuarios autenticados
 revoke execute on function public.is_platform_admin(), public.my_role(uuid), public.is_member(uuid),
