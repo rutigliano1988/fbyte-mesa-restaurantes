@@ -2,16 +2,29 @@
 
 ## 1. Supabase
 1. Crea un proyecto en la región **EU Central (Frankfurt)**.
-2. Aplica las migraciones de `supabase/migrations/` **en orden** (SQL Editor, `supabase db push` o la herramienta MCP `apply_migration`).
-   Después, revisa los avisos de seguridad y rendimiento con `get_advisors` (MCP de Supabase) o en Advisors del panel: es normal que queden avisos 0028/0029 (funciones `SECURITY DEFINER` ejecutables): `get_invitation` para `anon` y las funciones de negocio y de permisos (`is_member`, `has_role`, `my_role`, `belongs_to`, `is_platform_admin`, `my_restaurants`, `create_restaurant`, `create_invitation`, `accept_invitation`, `set_restaurant_status`, `log_admin_view`, `restaurant_team`) para `authenticated`. Son intencionados: **no les quites los permisos**, porque las políticas RLS dependen de ellos. Cualquier otro aviso de seguridad sí hay que corregirlo.
-3. Settings → API Keys: copia la *publishable key* y la *secret key* en `.env.local` (ver `.env.example`).
-4. Authentication → URL Configuration:
+2. Aplica las migraciones de `supabase/migrations/` **en orden** (SQL Editor, `supabase db push` o la herramienta MCP `apply_migration`). Las ya aplicadas no se vuelven a aplicar ni se editan.
+   - Hito 1: `20261124000100_base.sql`, `20261124000200_invitations.sql`.
+   - Hito 2: `20261125000100_local.sql`, `20261125000200_horario.sql`, `20261125000300_publicar.sql`.
+   - **Aviso sobre `20261125000300_publicar.sql`:** devuelve a «En configuración» (`setup`) los restaurantes que estén «Activo» (`active`) sin un contrato de encargado del tratamiento aceptado; su Administrador tendrá que publicar de nuevo. Despliega esta migración **a la vez que el código de la aplicación de este hito**, no antes ni mucho después.
+
+   Después, revisa los avisos de seguridad y rendimiento con `get_advisors` (MCP de Supabase) o en Advisors del panel. Es normal que queden avisos 0028/0029 (funciones `SECURITY DEFINER` ejecutables):
+   - para `anon`: `get_invitation`, `get_public_restaurant` y `list_public_slugs` (la mini-web pública solo lee por ellas);
+   - para `authenticated`: las de permisos (`is_member`, `has_role`, `my_role`, `belongs_to`, `is_platform_admin`, `my_restaurants`) y las de negocio (`create_restaurant`, `create_invitation`, `accept_invitation`, `set_restaurant_status`, `log_admin_view`, `restaurant_team`, `change_slug`, `restaurant_missing_fields`, `publish_restaurant`).
+
+   Son intencionados: **no les quites los permisos**, porque las políticas RLS y la mini-web dependen de ellos. Cualquier otro aviso de seguridad sí hay que corregirlo.
+   - Tras aplicar las migraciones, haz una prueba real de subida como Administrador: sube un logo y una foto de galería y comprueba que aparecen en Storage → `restaurant-media`.
+3. Storage (lo crea la migración `20261125000100_local.sql`): en Storage → Buckets comprueba que existe `restaurant-media`, **público**, con límite de 2 MB y tipos `image/webp` e `image/jpeg`, y que en Storage → Policies aparecen `restaurant_media_select`, `restaurant_media_insert`, `restaurant_media_update` y `restaurant_media_delete` sobre `storage.objects`. Si la migración no pudiera crear esas políticas por permisos, créalas a mano en esa pantalla con la expresión `public.can_manage_media(bucket_id, name)` (en `insert` como *with check*; en `update`, en las dos), para el rol `authenticated`.
+   - Si al crear las políticas sobre `storage.objects` falla con «must be owner of table objects», ejecuta la parte de Storage de `20261125000100_local.sql` desde el SQL Editor de Supabase.
+   - La extensión `btree_gist` se instala en el esquema `extensions` (la necesitan las restricciones que impiden solapar servicios y cierres).
+   - El plan gratuito no transforma imágenes: el navegador las reduce y las pasa a WebP antes de subirlas. No hace falta activar *Image Transformations*.
+4. Settings → API Keys: copia la *publishable key* y la *secret key* en `.env.local` (ver `.env.example`).
+5. Authentication → URL Configuration:
    - **Site URL**: la URL pública (en local `http://localhost:3000`).
    - **Redirect URLs**: `http://localhost:3000/auth/confirm` y `https://<dominio>/auth/confirm`.
      En el proyecto de **desarrollo** (el que usan las vistas previas) añade también el comodín de Vercel: `https://*-<equipo>.vercel.app/auth/confirm`.
-5. Authentication → Providers → Email: deja activado el acceso con email y contraseña. Desactiva **"Allow new users to sign up"**: las cuentas solo se crean mediante invitación.
-6. Authentication → SMTP: configura el SMTP de **Resend** (host `smtp.resend.com`, puerto 465, usuario `resend`, contraseña = API key de Resend) con el mismo remitente que `EMAIL_FROM`. Lo usan los emails de recuperación de contraseña.
-7. Authentication → Emails: sustituye las plantillas en inglés por textos en castellano. La importante es **Reset password**: su enlace tiene que pasar por `/auth/confirm` con `token_hash`, para que la recuperación funcione aunque se abra el email en otro navegador o en el móvil.
+6. Authentication → Providers → Email: deja activado el acceso con email y contraseña. Desactiva **"Allow new users to sign up"**: las cuentas solo se crean mediante invitación.
+7. Authentication → SMTP: configura el SMTP de **Resend** (host `smtp.resend.com`, puerto 465, usuario `resend`, contraseña = API key de Resend) con el mismo remitente que `EMAIL_FROM`. Lo usan los emails de recuperación de contraseña.
+8. Authentication → Emails: sustituye las plantillas en inglés por textos en castellano. La importante es **Reset password**: su enlace tiene que pasar por `/auth/confirm` con `token_hash`, para que la recuperación funcione aunque se abra el email en otro navegador o en el móvil.
 
    - **Asunto**: `Cambia tu contraseña`
    - **Cuerpo** (HTML):
@@ -60,3 +73,5 @@ Pruebas: `pnpm test` (unitarias y de BD; la BD de pruebas se levanta sola en el 
    En las vistas previas, define `NEXT_PUBLIC_SITE_URL` en el entorno *Preview* (por ejemplo, la URL fija de la rama), o acepta que los enlaces de invitación y recuperación apunten al sitio de desarrollo.
    - **Nunca des la clave secreta de producción (`SUPABASE_SECRET_KEY`) a las vistas previas (Preview).** En el entorno Preview de Vercel usa las claves de un proyecto de Supabase de **desarrollo**, aparte del de producción.
 3. Cada push a `main` despliega a producción; cada PR crea una vista previa.
+4. No hay variables nuevas en el Hito 2. Las server actions aceptan cuerpos de hasta 4 MB (`next.config.ts`), por debajo del límite de 4,5 MB de las funciones de Vercel; las fotos llegan ya comprimidas (máx. 2 MB).
+5. La mini-web vive en `/<slug>` y se cachea por restaurante; los cambios del panel se ven al momento. `sitemap.xml` y `robots.txt` usan `NEXT_PUBLIC_SITE_URL`: ponla con la URL de producción.
