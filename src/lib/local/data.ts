@@ -77,6 +77,9 @@ export async function getRestaurantLocal(restaurantId: string): Promise<Restaura
     supabase.from('slug_redirects').select('old_slug').eq('restaurant_id', restaurantId).order('created_at', { ascending: false }),
   ]);
   if (restaurant.error || !restaurant.data) throw new Error(`restaurants: ${restaurant.error?.message ?? 'sin datos'}`);
+  for (const [table, res] of [['restaurant_translations', translations], ['restaurant_photos', photos], ['slug_redirects', redirects]] as const) {
+    if (res.error) throw new Error(`${table}: ${res.error.message}`);
+  }
   const r = restaurant.data as unknown as ProfileRow;
   const descriptions: Partial<Record<Locale, string>> = {};
   for (const t of (translations.data ?? []) as { locale: Locale; description: string }[]) descriptions[t.locale] = t.description;
@@ -135,6 +138,8 @@ export async function getRestaurantSchedule(restaurantId: string): Promise<Resta
       .order('date_from'),
   ]);
   if (restaurant.error || !restaurant.data) throw new Error(`restaurants: ${restaurant.error?.message ?? 'sin datos'}`);
+  if (services.error) throw new Error(`services: ${services.error.message}`);
+  if (exceptions.error) throw new Error(`schedule_exceptions: ${exceptions.error.message}`);
   type ExceptionRow = {
     id: string;
     date_from: string;

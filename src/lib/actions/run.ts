@@ -15,10 +15,10 @@ export type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>;
  * Invalida la mini-web y refresca el panel. Solo desde server actions (updateTag lo exige).
  * allPublic: también el resto de mini-webs y el sitemap (cambios de slug o de estado).
  */
-export function refreshRestaurant(restaurantId: string, slug: string, allPublic = false): void {
+export function refreshRestaurant(_restaurantId: string, slug: string, allPublic = false): void {
   updateTag(publicRestaurantTag(slug));
   if (allPublic) updateTag(PUBLIC_ALL_TAG);
-  revalidatePath(`/panel/${restaurantId}`, 'layout');
+  revalidatePath('/panel/[restaurantId]', 'layout');
 }
 
 /**
@@ -38,15 +38,13 @@ export async function runPanelAction(
     const result = await fn(supabase, ctx);
     if (!result.error && !result.fieldErrors) {
       refreshRestaurant(restaurantId, ctx.restaurant.slug, opts.allPublic);
-      // Si fn ha cambiado la dirección, invalida también la etiqueta de la dirección actual.
-      const { data } = await supabase.from('restaurants').select('slug').eq('id', restaurantId).maybeSingle();
-      const currentSlug = (data as { slug: string } | null)?.slug;
-      if (currentSlug && currentSlug !== ctx.restaurant.slug) refreshRestaurant(restaurantId, currentSlug, opts.allPublic);
     }
     return result;
   } catch (e) {
     unstable_rethrow(e);
-    return { error: mapDbError(e instanceof Error ? e.message : undefined) };
+    const mapped = mapDbError(e instanceof Error ? e.message : undefined);
+    if (mapped === mapDbError(undefined)) console.error('[panel-action]', e);
+    return { error: mapped };
   }
 }
 
