@@ -1,23 +1,26 @@
 export type SocialNetwork = 'instagram' | 'facebook' | 'tiktok';
 
-const RULES: Record<SocialNetwork, { hosts: string[]; base: string; handle: RegExp; at: boolean }> = {
+const RULES: Record<SocialNetwork, { hosts: string[]; base: string; handle: RegExp; at: boolean; reserved: string[] }> = {
   instagram: {
     hosts: ['instagram.com', 'www.instagram.com', 'm.instagram.com'],
     base: 'https://www.instagram.com/',
     handle: /^[A-Za-z0-9._]{1,30}$/,
     at: false,
+    reserved: ['p', 'reel', 'reels', 'tv', 'explore', 'stories', 'accounts', 'direct'],
   },
   facebook: {
     hosts: ['facebook.com', 'www.facebook.com', 'm.facebook.com', 'es-es.facebook.com', 'fb.com', 'www.fb.com'],
     base: 'https://www.facebook.com/',
     handle: /^[A-Za-z0-9.-]{2,100}$/,
     at: false,
+    reserved: ['groups', 'pages', 'share', 'events', 'watch', 'marketplace', 'profile.php', 'sharer'],
   },
   tiktok: {
     hosts: ['tiktok.com', 'www.tiktok.com', 'm.tiktok.com'],
     base: 'https://www.tiktok.com/',
     handle: /^[A-Za-z0-9._]{2,24}$/,
     at: true,
+    reserved: ['discover', 'tag', 'music', 'video', 'search', 'foryou'],
   },
 };
 
@@ -39,12 +42,15 @@ export function normalizeSocial(network: SocialNetwork, input: string): string |
     }
     if (!rule.hosts.includes(url.hostname.toLowerCase())) return null;
     const segment = url.pathname.split('/').filter(Boolean)[0] ?? '';
-    if (network === 'facebook' && segment === 'profile.php') {
+    if (network === 'facebook' && segment.toLowerCase() === 'profile.php') {
       const id = url.searchParams.get('id');
       return id && /^\d{5,20}$/.test(id) ? `${rule.base}profile.php?id=${id}` : null;
     }
-    handle = decodeURIComponent(segment);
+    if (rule.reserved.includes(segment.toLowerCase())) return null;
+    if (rule.at && !segment.startsWith('@')) return null;
+    handle = segment;
   } else {
+    if (rule.hosts.includes(value.toLowerCase())) return null;
     handle = value;
   }
   handle = handle.replace(/^@/, '');
@@ -70,7 +76,13 @@ export function normalizeWebsite(input: string): string | null {
 
 /** Para mostrar: 'https://www.instagram.com/pepe' → '@pepe'. */
 export function socialHandle(url: string): string {
-  const path = new URL(url).pathname.replace(/^\/+|\/+$/g, '');
+  let pathname: string;
+  try {
+    pathname = new URL(url).pathname;
+  } catch {
+    return url;
+  }
+  const path = pathname.replace(/^\/+|\/+$/g, '');
   if (path === 'profile.php') return 'Facebook';
   return path.startsWith('@') ? path : `@${path}`;
 }

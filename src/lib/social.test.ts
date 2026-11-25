@@ -30,6 +30,41 @@ describe('normalizeSocial', () => {
   });
 });
 
+describe('normalizeSocial: entradas malformadas y no-perfiles', () => {
+  it('no lanza con porcentajes mal codificados', () => {
+    expect(() => normalizeSocial('instagram', 'instagram.com/%E0%A4%A')).not.toThrow();
+    expect(normalizeSocial('instagram', 'instagram.com/%E0%A4%A')).toBeNull();
+  });
+
+  it('rechaza publicaciones y rutas que no son un perfil', () => {
+    for (const [network, input] of [
+      ['instagram', 'instagram.com/p/ABC123'],
+      ['instagram', 'https://www.instagram.com/reel/x'],
+      ['instagram', 'https://www.instagram.com/explore/tags/x'],
+      ['facebook', 'facebook.com/groups/123'],
+      ['facebook', 'https://www.facebook.com/sharer'],
+      ['facebook', 'https://www.facebook.com/events/123'],
+      ['tiktok', 'tiktok.com/discover'],
+      ['tiktok', 'https://www.tiktok.com/tag/comida'],
+      ['tiktok', 'https://www.tiktok.com/pepebar'],
+    ] as const) {
+      expect(normalizeSocial(network, input), input).toBeNull();
+    }
+  });
+
+  it('un dominio sin usuario no es un perfil', () => {
+    for (const [network, input] of [
+      ['instagram', 'instagram.com'],
+      ['instagram', 'www.instagram.com'],
+      ['facebook', 'facebook.com'],
+      ['tiktok', 'tiktok.com'],
+      ['tiktok', 'https://www.tiktok.com/'],
+    ] as const) {
+      expect(normalizeSocial(network, input), input).toBeNull();
+    }
+  });
+});
+
 describe('normalizeWebsite', () => {
   it('añade https y pasa http a https', () => {
     expect(normalizeWebsite('pepe.es')).toBe('https://pepe.es');
@@ -48,4 +83,9 @@ it('socialHandle muestra el usuario', () => {
   expect(socialHandle('https://www.instagram.com/pepe')).toBe('@pepe');
   expect(socialHandle('https://www.tiktok.com/@pepe')).toBe('@pepe');
   expect(socialHandle('https://www.facebook.com/profile.php?id=123456')).toBe('Facebook');
+});
+
+it('socialHandle no lanza con un valor guardado corrupto', () => {
+  expect(() => socialHandle('esto no es una url')).not.toThrow();
+  expect(socialHandle('esto no es una url')).toBe('esto no es una url');
 });
