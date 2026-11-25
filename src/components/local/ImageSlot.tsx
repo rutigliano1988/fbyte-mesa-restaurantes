@@ -38,7 +38,11 @@ export function ImageSlot({
             <form action={removeRestaurantImage}>
               <input type="hidden" name="restaurantId" value={restaurantId} />
               <input type="hidden" name="kind" value={kind} />
-              <button type="submit" className="px-2 py-3 text-sm font-bold text-navy hover:underline">
+              <button
+                type="submit"
+                aria-label={kind === 'logo' ? 'Quitar el logo' : 'Quitar la portada'}
+                className="px-2 py-3 text-sm font-bold text-navy hover:underline"
+              >
                 Quitar
               </button>
             </form>

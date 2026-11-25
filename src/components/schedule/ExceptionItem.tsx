@@ -16,6 +16,8 @@ export function ExceptionItem({
     kind === 'closed'
       ? 'Cerrado'
       : `Horario especial: ${customServices.map((s) => `${s.name} ${formatRange(s.startMinute, s.endMinute)}`).join(' · ')}`;
+  const what = kind === 'closed' ? 'el cierre' : 'el horario especial';
+  const when = dateFrom === dateTo ? `del ${formatDateEs(dateFrom)}` : `del ${formatDateEs(dateFrom)} al ${formatDateEs(dateTo)}`;
   return (
     <li className="flex flex-wrap items-center justify-between gap-2 border-b border-ink/10 py-3">
       <span>
@@ -26,7 +28,7 @@ export function ExceptionItem({
         <form action={deleteException}>
           <input type="hidden" name="restaurantId" value={restaurantId} />
           <input type="hidden" name="exceptionId" value={exception.id} />
-          <button type="submit" className="text-sm font-bold text-red-700 hover:underline">
+          <button type="submit" aria-label={`Quitar ${what} ${when}`} className="text-sm font-bold text-red-700 hover:underline">
             Quitar
           </button>
         </form>

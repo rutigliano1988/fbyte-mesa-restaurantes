@@ -5,6 +5,14 @@ const REQUIRED = 'Este campo es obligatorio.';
 const BAD_TIME = 'Escribe la hora así: 13:30.';
 const BAD_RANGE = 'Revisa las horas: tiene que acabar después de empezar y, como mucho, a las 06:00 del día siguiente.';
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+const NO_SUCH_DATE = 'Esa fecha no existe.';
+
+/** '2026-02-28' sí; '2026-02-31' o '2026-13-01' no. Espera el formato aaaa-mm-dd. */
+function isRealDate(iso: string): boolean {
+  const [y, m, d] = iso.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+}
 
 const serviceName = z
   .string({ error: REQUIRED })
@@ -49,7 +57,10 @@ export const newServicesSchema = z
 /** Cierre (closed) u horario especial (custom) de una fecha o un rango de fechas, con hasta dos servicios. */
 export const exceptionSchema = z
   .object({
-    dateFrom: z.string({ error: REQUIRED }).regex(ISO_DATE, 'Elige una fecha.'),
+    dateFrom: z
+      .string({ error: REQUIRED })
+      .regex(ISO_DATE, { message: 'Elige una fecha.', abort: true })
+      .refine(isRealDate, NO_SUCH_DATE),
     dateTo: z.string().trim(),
     kind: z.enum(['closed', 'custom'], { error: 'Elige si cierras o abres con otro horario.' }),
     note: z
@@ -69,6 +80,9 @@ export const exceptionSchema = z
     let ok = true;
     if (!ISO_DATE.test(dateTo)) {
       ctx.addIssue({ code: 'custom', path: ['dateTo'], message: 'Elige una fecha.' });
+      ok = false;
+    } else if (!isRealDate(dateTo)) {
+      ctx.addIssue({ code: 'custom', path: ['dateTo'], message: NO_SUCH_DATE });
       ok = false;
     } else if (dateTo < v.dateFrom) {
       ctx.addIssue({ code: 'custom', path: ['dateTo'], message: 'La fecha final no puede ser anterior a la inicial.' });

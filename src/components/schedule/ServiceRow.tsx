@@ -1,6 +1,6 @@
 import { ActionForm, FormField } from '@/components/forms/ActionForm';
 import { deleteService, updateService } from '@/lib/actions/schedule';
-import { formatRange, minutesToTime, type ServiceSlot } from '@/lib/schedule';
+import { formatRange, isWeekday, minutesToTime, WEEKDAY_LABELS_ES, type ServiceSlot } from '@/lib/schedule';
 
 export function ServiceRow({
   restaurantId,
@@ -18,6 +18,7 @@ export function ServiceRow({
       </li>
     );
   }
+  const day = isWeekday(service.weekday) ? ` del ${WEEKDAY_LABELS_ES[service.weekday].toLowerCase()}` : '';
   return (
     <li className="flex flex-col gap-2 border-b border-ink/10 py-3 sm:flex-row sm:items-end">
       <div className="flex-1">
@@ -35,7 +36,11 @@ export function ServiceRow({
       <form action={deleteService}>
         <input type="hidden" name="restaurantId" value={restaurantId} />
         <input type="hidden" name="serviceId" value={service.id} />
-        <button type="submit" className="px-2 py-3 text-sm font-bold text-red-700 hover:underline">
+        <button
+          type="submit"
+          aria-label={`Quitar ${service.name}${day}`}
+          className="px-2 py-3 text-sm font-bold text-red-700 hover:underline"
+        >
           Quitar
         </button>
       </form>

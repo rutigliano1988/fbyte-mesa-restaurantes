@@ -93,4 +93,27 @@ describe('exceptionSchema', () => {
     if (overlap.success) return;
     expect(fieldErrorsFrom(overlap.error)).toEqual({ end2: 'Los dos servicios se solapan.' });
   });
+
+  it('rechaza fechas que no existen', () => {
+    const from = exceptionSchema.safeParse({ dateFrom: '2026-02-31', dateTo: '', kind: 'closed', note: '', ...emptyServices });
+    expect(from.success).toBe(false);
+    if (from.success) return;
+    expect(fieldErrorsFrom(from.error)).toEqual({ dateFrom: 'Esa fecha no existe.' });
+
+    const to = exceptionSchema.safeParse({ dateFrom: '2026-02-27', dateTo: '2026-02-30', kind: 'closed', note: '', ...emptyServices });
+    expect(to.success).toBe(false);
+    if (to.success) return;
+    expect(fieldErrorsFrom(to.error)).toEqual({ dateTo: 'Esa fecha no existe.' });
+
+    const leap = exceptionSchema.safeParse({ dateFrom: '2028-02-29', dateTo: '2028-13-01', kind: 'closed', note: '', ...emptyServices });
+    expect(leap.success).toBe(false);
+    if (leap.success) return;
+    expect(fieldErrorsFrom(leap.error)).toEqual({ dateTo: 'Esa fecha no existe.' });
+    expect(exceptionSchema.safeParse({ dateFrom: '2028-02-29', dateTo: '', kind: 'closed', note: '', ...emptyServices }).success).toBe(true);
+
+    const empty = exceptionSchema.safeParse({ dateFrom: '', dateTo: '', kind: 'closed', note: '', ...emptyServices });
+    expect(empty.success).toBe(false);
+    if (empty.success) return;
+    expect(empty.error.issues.map((i) => i.message)).toEqual(['Elige una fecha.']);
+  });
 });

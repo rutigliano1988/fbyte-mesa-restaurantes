@@ -54,7 +54,14 @@ export function ImageUploader({
 
   return (
     <div className="flex flex-col gap-2">
-      <label className={buttonClass('secondary', disabled || pending ? 'pointer-events-none opacity-50' : 'cursor-pointer')}>
+      {/* El input real es sr-only: el foco se ve en la etiqueta con forma de botón, como en Button. */}
+      <label
+        className={buttonClass(
+          'secondary',
+          'focus-within:outline focus-within:outline-3 focus-within:outline-offset-2 focus-within:outline-navy ' +
+            (disabled || pending ? 'pointer-events-none opacity-50' : 'cursor-pointer'),
+        )}
+      >
         {pending ? 'Subiendo…' : label}
         <input
           type="file"

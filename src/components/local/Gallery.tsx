@@ -35,7 +35,7 @@ export function Gallery({
                         <button
                           type="submit"
                           disabled={direction === 'up' ? i === 0 : i === photos.length - 1}
-                          aria-label={direction === 'up' ? `Mover la foto ${i + 1} antes` : `Mover la foto ${i + 1} después`}
+                          aria-label={`Mover la foto ${i + 1} a la ${direction === 'up' ? 'izquierda' : 'derecha'}`}
                           className="rounded-[6px] px-2 py-1 hover:bg-peach-soft disabled:opacity-30"
                         >
                           {direction === 'up' ? '←' : '→'}
@@ -46,7 +46,7 @@ export function Gallery({
                   <form action={deletePhoto}>
                     <input type="hidden" name="restaurantId" value={restaurantId} />
                     <input type="hidden" name="photoId" value={p.id} />
-                    <button type="submit" className="px-2 py-1 text-red-700 hover:underline">
+                    <button type="submit" aria-label={`Borrar la foto ${i + 1}`} className="px-2 py-1 text-red-700 hover:underline">
                       Borrar
                     </button>
                   </form>
