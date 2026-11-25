@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isLocale, parseAcceptLanguage, resolveLocale, sortLocales } from './locales';
+import { isLocale, langParam, parseAcceptLanguage, resolveLocale, sortLocales } from './locales';
 
 describe('parseAcceptLanguage', () => {
   it('ordena por calidad y respeta el orden ante empates', () => {
@@ -39,4 +39,14 @@ it('isLocale y sortLocales', () => {
   expect(isLocale('ca')).toBe(true);
   expect(isLocale('pt')).toBe(false);
   expect(sortLocales(['it', 'pt', 'es', 'it', 'en'])).toEqual(['es', 'en', 'it']);
+});
+
+describe('langParam', () => {
+  it('acepta un texto, el primer valor de una lista o nada', () => {
+    expect(langParam('EN ')).toBe('en');
+    expect(langParam(['ca', 'en'])).toBe('ca');
+    expect(langParam([])).toBeUndefined();
+    expect(langParam('')).toBeUndefined();
+    expect(langParam(undefined)).toBeUndefined();
+  });
 });

@@ -66,3 +66,10 @@ export function resolveLocale(input: {
   }
   return DEFAULT_LOCALE;
 }
+
+/** `?lang=` tal como lo entrega Next 16 (string | string[] | undefined): primer valor, recortado y en minúsculas. */
+export function langParam(value: string | string[] | undefined): string | undefined {
+  const first = Array.isArray(value) ? value[0] : value;
+  const lang = first?.trim().toLowerCase();
+  return lang ? lang : undefined;
+}
