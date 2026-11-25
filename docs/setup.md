@@ -73,5 +73,10 @@ Pruebas: `pnpm test` (unitarias y de BD; la BD de pruebas se levanta sola en el 
    En las vistas previas, define `NEXT_PUBLIC_SITE_URL` en el entorno *Preview* (por ejemplo, la URL fija de la rama), o acepta que los enlaces de invitación y recuperación apunten al sitio de desarrollo.
    - **Nunca des la clave secreta de producción (`SUPABASE_SECRET_KEY`) a las vistas previas (Preview).** En el entorno Preview de Vercel usa las claves de un proyecto de Supabase de **desarrollo**, aparte del de producción.
 3. Cada push a `main` despliega a producción; cada PR crea una vista previa.
+   - Settings → Functions: comprueba que la región de las funciones es **`fra1` (Fráncfort)**, por RGPD y por latencia con Supabase (`eu-central-1`).
 4. No hay variables nuevas en el Hito 2. Las server actions aceptan cuerpos de hasta 4 MB (`next.config.ts`), por debajo del límite de 4,5 MB de las funciones de Vercel; las fotos llegan ya comprimidas (máx. 2 MB).
 5. La mini-web vive en `/<slug>` y se cachea por restaurante; los cambios del panel se ven al momento. `sitemap.xml` y `robots.txt` usan `NEXT_PUBLIC_SITE_URL`: ponla con la URL de producción.
+
+## 6. Revisión legal (antes de abrir a clientes)
+1. El contrato de encargado del tratamiento (`src/lib/legal/dpa.ts`, versión `2026-11-borrador`) y el aviso legal de la mini-web son plantillas marcadas «PENDIENTE DE REVISIÓN LEGAL»: tiene que revisarlas un abogado antes de publicar restaurantes reales.
+2. Vercel y Resend son proveedores de EE. UU.: incluye las **transferencias internacionales de datos** (y sus garantías) en el contrato y en la lista de subencargados.
