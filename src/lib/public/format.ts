@@ -26,3 +26,8 @@ export function mapEmbedUrl(address: string): string {
 export function withLang(path: string, locale: Locale | null | undefined): string {
   return !locale || locale === DEFAULT_LOCALE ? path : `${path}?lang=${locale}`;
 }
+
+/** Enlace interno que conserva el idioma elegido: añade ?lang= siempre, también en castellano. */
+export function localeHref(path: string, locale: Locale): string {
+  return `${path}?lang=${locale}`;
+}

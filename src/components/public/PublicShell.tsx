@@ -4,7 +4,7 @@ import { BRAND } from '@/config/brand';
 import { accentTheme } from '@/lib/color';
 import { LOCALE_NAMES, type Locale } from '@/lib/i18n/locales';
 import { getMessages } from '@/lib/i18n/messages';
-import { withLang } from '@/lib/public/format';
+import { localeHref } from '@/lib/public/format';
 import type { PublicRestaurant } from '@/lib/public/restaurant-schema';
 
 /** Marco de las páginas públicas: colores del restaurante, idioma, selector de idioma y pie. */
@@ -31,7 +31,7 @@ export function PublicShell({
             {restaurant.enabledLocales.map((l) => (
               <Link
                 key={l}
-                href={withLang(path, l)}
+                href={localeHref(path, l)}
                 hrefLang={l}
                 lang={l}
                 aria-current={l === locale ? 'true' : undefined}
@@ -43,7 +43,7 @@ export function PublicShell({
           </nav>
         )}
         <p>
-          <Link href={withLang(`/${restaurant.slug}/aviso-legal`, locale)} className="hover:underline">
+          <Link href={localeHref(`/${restaurant.slug}/aviso-legal`, locale)} className="hover:underline">
             {m.legalNotice}
           </Link>
         </p>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SAMPLE_RESTAURANT } from './fixtures';
-import { directionsUrl, fullAddress, mapEmbedUrl, priceLabel, withLang } from './format';
+import { directionsUrl, fullAddress, localeHref, mapEmbedUrl, priceLabel, withLang } from './format';
 import { jsonLdScript, restaurantJsonLd } from './jsonld';
 import { languageAlternates, metaDescription, OG_LOCALE } from './seo';
 
@@ -16,6 +16,11 @@ describe('formato público', () => {
       'https://www.google.com/maps/dir/?api=1&destination=Calle%20Mayor%201%2C%2028013%20Madrid%2C%20Espa%C3%B1a',
     );
     expect(mapEmbedUrl('Calle Mayor 1')).toBe('https://www.google.com/maps?q=Calle%20Mayor%201%2C%20Espa%C3%B1a&output=embed');
+  });
+
+  it('localeHref añade siempre ?lang=, también en castellano', () => {
+    expect(localeHref('/la-taberna', 'es')).toBe('/la-taberna?lang=es');
+    expect(localeHref('/la-taberna/aviso-legal', 'de')).toBe('/la-taberna/aviso-legal?lang=de');
   });
 
   it('withLang solo añade ?lang= si no es castellano', () => {

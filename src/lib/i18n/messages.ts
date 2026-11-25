@@ -28,6 +28,8 @@ export type PublicMessages = {
   legalNotice: string;
   legalSpanishOnly: string;
   backToRestaurant: string;
+  notFoundTitle: string;
+  notFoundText: (product: string) => string;
   poweredBy: (product: string, company: string) => string;
   logoAlt: (name: string) => string;
   coverAlt: (name: string) => string;
@@ -60,6 +62,8 @@ const es: PublicMessages = {
   legalNotice: 'Aviso legal',
   legalSpanishOnly: '',
   backToRestaurant: 'Volver a la web del restaurante',
+  notFoundTitle: 'Este restaurante no está disponible',
+  notFoundText: (p) => `Puede que la dirección esté mal escrita o que el restaurante ya no esté en ${p}.`,
   poweredBy: (product, company) => `Reservas y menú con ${product} · ${company}`,
   logoAlt: (name) => `Logo de ${name}`,
   coverAlt: (name) => `Foto de ${name}`,
@@ -92,6 +96,8 @@ const en: PublicMessages = {
   legalNotice: 'Legal notice',
   legalSpanishOnly: 'This legal notice is only available in Spanish.',
   backToRestaurant: 'Back to the restaurant',
+  notFoundTitle: 'This restaurant is not available',
+  notFoundText: (p) => `The address may be mistyped, or the restaurant may no longer be on ${p}.`,
   poweredBy: (product, company) => `Bookings and menu by ${product} · ${company}`,
   logoAlt: (name) => `${name} logo`,
   coverAlt: (name) => `Photo of ${name}`,
@@ -124,6 +130,8 @@ const ca: PublicMessages = {
   legalNotice: 'Avís legal',
   legalSpanishOnly: 'Aquest avís legal només està disponible en castellà.',
   backToRestaurant: 'Tornar al web del restaurant',
+  notFoundTitle: 'Aquest restaurant no està disponible',
+  notFoundText: (p) => `Pot ser que l'adreça estigui mal escrita o que el restaurant ja no sigui a ${p}.`,
   poweredBy: (product, company) => `Reserves i carta amb ${product} · ${company}`,
   logoAlt: (name) => `Logotip de ${name}`,
   coverAlt: (name) => `Foto de ${name}`,
@@ -156,6 +164,8 @@ const fr: PublicMessages = {
   legalNotice: 'Mentions légales',
   legalSpanishOnly: 'Ces mentions légales ne sont disponibles qu’en espagnol.',
   backToRestaurant: 'Retour au restaurant',
+  notFoundTitle: "Ce restaurant n'est pas disponible",
+  notFoundText: (p) => `L'adresse est peut-être mal saisie, ou le restaurant n'est plus sur ${p}.`,
   poweredBy: (product, company) => `Réservations et menu avec ${product} · ${company}`,
   logoAlt: (name) => `Logo de ${name}`,
   coverAlt: (name) => `Photo de ${name}`,
@@ -188,6 +198,8 @@ const de: PublicMessages = {
   legalNotice: 'Impressum',
   legalSpanishOnly: 'Dieses Impressum ist nur auf Spanisch verfügbar.',
   backToRestaurant: 'Zurück zum Restaurant',
+  notFoundTitle: 'Dieses Restaurant ist nicht verfügbar',
+  notFoundText: (p) => `Vielleicht ist die Adresse falsch geschrieben oder das Restaurant ist nicht mehr bei ${p}.`,
   poweredBy: (product, company) => `Reservierungen und Speisekarte mit ${product} · ${company}`,
   logoAlt: (name) => `Logo von ${name}`,
   coverAlt: (name) => `Foto von ${name}`,
@@ -220,6 +232,8 @@ const it: PublicMessages = {
   legalNotice: 'Note legali',
   legalSpanishOnly: 'Queste note legali sono disponibili solo in spagnolo.',
   backToRestaurant: 'Torna al ristorante',
+  notFoundTitle: 'Questo ristorante non è disponibile',
+  notFoundText: (p) => `Forse l'indirizzo è scritto male o il ristorante non è più su ${p}.`,
   poweredBy: (product, company) => `Prenotazioni e menù con ${product} · ${company}`,
   logoAlt: (name) => `Logo di ${name}`,
   coverAlt: (name) => `Foto di ${name}`,

@@ -1,10 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 /** El iframe de Google Maps solo se carga si el comensal lo pide (sin cookies de terceros por defecto). */
 export function MapEmbed({ src, title, buttonLabel, notice }: { src: string; title: string; buttonLabel: string; notice: string }) {
   const [open, setOpen] = useState(false);
+  const frame = useRef<HTMLIFrameElement>(null);
+  useEffect(() => {
+    if (open) frame.current?.focus();
+  }, [open]);
   if (!open) {
     return (
       <div>
@@ -21,11 +25,12 @@ export function MapEmbed({ src, title, buttonLabel, notice }: { src: string; tit
   }
   return (
     <iframe
+      ref={frame}
       src={src}
       title={title}
       className="h-72 w-full rounded-lg border-0"
       loading="lazy"
-      referrerPolicy="no-referrer-when-downgrade"
+      referrerPolicy="strict-origin-when-cross-origin"
       allowFullScreen
     />
   );

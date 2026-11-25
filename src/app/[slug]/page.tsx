@@ -8,7 +8,7 @@ import { siteUrl } from '@/lib/env';
 import { isLocale, langParam } from '@/lib/i18n/locales';
 import { getMessages } from '@/lib/i18n/messages';
 import { getPublicRestaurant, mediaUrl } from '@/lib/public/data';
-import { directionsUrl, fullAddress, mapEmbedUrl, priceLabel, withLang } from '@/lib/public/format';
+import { directionsUrl, fullAddress, mapEmbedUrl, localeHref, priceLabel } from '@/lib/public/format';
 import { jsonLdScript, restaurantJsonLd } from '@/lib/public/jsonld';
 import { requestLocale } from '@/lib/public/locale';
 import { descriptionFor } from '@/lib/public/restaurant-schema';
@@ -55,11 +55,11 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 export default async function RestaurantPage(props: Props) {
   const { slug, lang, result } = await load(props);
   if (!result) notFound();
-  if (result.kind === 'redirect') permanentRedirect(withLang(`/${result.slug}`, isLocale(lang) ? lang : null));
+  if (result.kind === 'redirect') permanentRedirect(isLocale(lang) ? localeHref(`/${result.slug}`, lang) : `/${result.slug}`);
 
   const r = result.restaurant;
   // Forma canónica del slug (p. ej. con mayúsculas en la URL): redirección permanente conservando ?lang.
-  if (slug !== r.slug) permanentRedirect(withLang(`/${r.slug}`, isLocale(lang) ? lang : null));
+  if (slug !== r.slug) permanentRedirect(isLocale(lang) ? localeHref(`/${r.slug}`, lang) : `/${r.slug}`);
   const locale = await requestLocale(lang, r.enabledLocales);
   const m = getMessages(locale);
   const path = `/${r.slug}`;
@@ -81,7 +81,7 @@ export default async function RestaurantPage(props: Props) {
       <header className="relative">
         <div className="relative h-56 w-full bg-neutral-200 sm:h-80">
           {r.coverPath && (
-            <Image src={mediaUrl(r.coverPath)} alt={m.coverAlt(r.name)} fill priority unoptimized sizes="100vw" className="object-cover" />
+            <Image src={mediaUrl(r.coverPath)} alt={m.coverAlt(r.name)} fill preload unoptimized sizes="100vw" className="object-cover" />
           )}
         </div>
         <div className="mx-auto flex max-w-3xl items-end gap-4 px-4">
@@ -96,7 +96,12 @@ export default async function RestaurantPage(props: Props) {
               <p className="text-neutral-600">
                 {r.cuisine}
                 {r.cuisine && price && ' · '}
-                {price && <span aria-label={`${m.price}: ${price}`}>{price}</span>}
+                {price && (
+                  <span>
+                    <span className="sr-only">{m.price}: </span>
+                    {price}
+                  </span>
+                )}
               </p>
             )}
           </div>

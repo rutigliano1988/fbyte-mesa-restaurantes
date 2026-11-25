@@ -41,7 +41,7 @@ export function OpeningHours({
               const times = e.customServices.map((s) => formatRange(s.startMinute, s.endMinute)).join(' · ');
               return (
                 <li key={`${e.dateFrom}-${e.dateTo}`}>
-                  {e.kind === 'closed' ? m.closedOn(from, to) : `${m.specialOn(from, to)}: ${times}`}
+                  {e.kind === 'closed' ? m.closedOn(from, to) : times ? `${m.specialOn(from, to)}: ${times}` : m.specialOn(from, to)}
                   {e.note && <span className="text-neutral-500"> · {e.note}</span>}
                 </li>
               );
