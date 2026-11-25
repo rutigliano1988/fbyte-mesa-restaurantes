@@ -15,3 +15,13 @@ export function fieldErrorsFrom(error: z.ZodError): Record<string, string> {
   }
   return out;
 }
+
+/** Lee campos de texto de un FormData; los que faltan (o son archivos) llegan como ''. */
+export function formStrings<K extends string>(fd: FormData, keys: readonly K[]): Record<K, string> {
+  const out = {} as Record<K, string>;
+  for (const key of keys) {
+    const value = fd.get(key);
+    out[key] = typeof value === 'string' ? value : '';
+  }
+  return out;
+}

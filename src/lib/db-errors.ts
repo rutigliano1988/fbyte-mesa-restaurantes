@@ -13,6 +13,23 @@ const RULES: [RegExp, string][] = [
   [/RESTAURANT_DISABLED/, 'Este restaurante está desactivado. Reactívalo antes de invitar a nadie.'],
   [/\bNOT_FOUND\b/, 'No encontramos ese restaurante.'],
   [/NOT_AUTHENTICATED/, 'Tu sesión ha caducado. Vuelve a entrar.'],
+  // Hito 2: ficha, fotos, horario y publicación
+  [/SLUG_TAKEN/, 'Esa dirección ya la usa otro restaurante. Prueba con otra.'],
+  [/PHOTO_LIMIT/, 'Ya tienes 12 fotos en la galería. Borra alguna para subir otra.'],
+  [/services_no_overlap/, 'Ese servicio se solapa con otro del mismo día.'],
+  [/services_range_check/, 'Revisa las horas: tiene que acabar después de empezar y, como mucho, a las 06:00 del día siguiente.'],
+  [/schedule_exceptions_no_overlap/, 'Ya hay un cierre u horario especial en esas fechas.'],
+  [/schedule_exceptions_dates_check/, 'Revisa las fechas: la final no puede ser anterior a la inicial (y como mucho, un año).'],
+  [/MISSING_FIELDS/, 'Todavía faltan datos para publicar. Revisa la lista.'],
+  [/ALREADY_PUBLISHED/, 'Tu web ya está publicada.'],
+  [/DPA_VERSION/, 'El contrato ha cambiado. Recarga la página y vuelve a aceptarlo.'],
+  [/DPA_REQUIRED/, 'Este restaurante aún no ha aceptado el contrato. Lo publica su administrador desde el panel.'],
+  [/restaurants_tax_id_check/, 'Ese CIF, NIF o NIE no parece correcto.'],
+  [/restaurants_postal_code_check/, 'El código postal tiene 5 cifras (por ejemplo, 28013).'],
+  [/restaurants_accent_color_check/, 'Elige un color válido.'],
+  [/restaurants_enabled_locales_es_check/, 'El castellano siempre tiene que estar activo.'],
+  [/exceeded the maximum allowed size|payload too large/i, 'La imagen pesa demasiado. Prueba con otra más pequeña.'],
+  [/mime type/i, 'Ese formato de imagen no vale. Usa JPG, PNG o WebP.'],
 ];
 
 export function mapDbError(message: string | null | undefined): string {

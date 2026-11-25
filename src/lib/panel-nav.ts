@@ -5,6 +5,8 @@ export type NavItem = { href: string; label: string };
 // Cada hito añade aquí sus secciones (Local, Menú, Reservas, Clientes, Estadísticas).
 const ITEMS: { path: string; label: string; permission: Permission | null }[] = [
   { path: '', label: 'Inicio', permission: null },
+  { path: '/local', label: 'Local', permission: 'restaurant.edit' },
+  { path: '/horario', label: 'Horario', permission: 'settings.booking' },
   { path: '/usuarios', label: 'Equipo', permission: 'users.manage' },
 ];
 
