@@ -59,3 +59,12 @@ export function accentTheme(input: string | null | undefined): AccentTheme {
     meetsAA: contrastRatio(accent, onAccent) >= MIN_CONTRAST,
   };
 }
+
+/**
+ * Colores de la mini-web: el acento guardado solo si su texto llega a 4,5:1; si no (p. ej. un color
+ * guardado antes de la comprobación o metido a mano), el navy por defecto.
+ */
+export function publicAccentTheme(input: string | null | undefined): AccentTheme {
+  const theme = accentTheme(input);
+  return theme.meetsAA ? theme : accentTheme(DEFAULT_ACCENT);
+}

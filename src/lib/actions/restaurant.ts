@@ -100,10 +100,16 @@ export async function saveLanguages(_prev: FormState, fd: FormData): Promise<For
   const parsed = languagesSchema.safeParse({ locales: fd.getAll('locales') });
   if (!parsed.success) return { fieldErrors: fieldErrorsFrom(parsed.error) };
   const restaurantId = restaurantIdOf(fd);
-  return runPanelAction(restaurantId, 'restaurant.edit', async (supabase) => {
-    const saved = await updateRestaurant(supabase, restaurantId, { enabled_locales: parsed.data.locales });
-    return saved.error ? saved : { success: 'Idiomas guardados. Escribe la descripción en cada uno en «Datos básicos».' };
-  });
+  // Los idiomas salen en el sitemap y en los hreflang: se invalida todo lo público.
+  return runPanelAction(
+    restaurantId,
+    'restaurant.edit',
+    async (supabase) => {
+      const saved = await updateRestaurant(supabase, restaurantId, { enabled_locales: parsed.data.locales });
+      return saved.error ? saved : { success: 'Idiomas guardados. Escribe la descripción en cada uno en «Datos básicos».' };
+    },
+    { allPublic: true },
+  );
 }
 
 export async function changeSlug(_prev: FormState, fd: FormData): Promise<FormState> {

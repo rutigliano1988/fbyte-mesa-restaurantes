@@ -11,6 +11,8 @@ import { PUBLIC_ALL_TAG, publicRestaurantTag } from './tags';
 
 /** Una hora como red de seguridad; lo normal es que las acciones del panel invaliden al momento. */
 const REVALIDATE_SECONDS = 3600;
+/** Versión de la forma de los datos cacheados: súbela si cambia lo que devuelven las funciones públicas. */
+const CACHE_VERSION = 'v1';
 
 /** Mini-web por dirección pública. Cacheada por slug; React cache() evita repetirla entre generateMetadata y la página. */
 export const getPublicRestaurant = cache(async (rawSlug: string): Promise<PublicLookup> => {
@@ -22,7 +24,7 @@ export const getPublicRestaurant = cache(async (rawSlug: string): Promise<Public
       if (error) throw new Error(`get_public_restaurant: ${error.message}`);
       return parsePublicLookup(data);
     },
-    ['public-restaurant', slug],
+    ['public-restaurant', CACHE_VERSION, slug],
     { tags: [publicRestaurantTag(slug), PUBLIC_ALL_TAG], revalidate: REVALIDATE_SECONDS },
   )();
 });
@@ -39,7 +41,7 @@ export const getPublicSlugs = unstable_cache(
       updatedAt: r.updated_at,
     }));
   },
-  ['public-slugs'],
+  ['public-slugs', CACHE_VERSION],
   { tags: [PUBLIC_ALL_TAG], revalidate: REVALIDATE_SECONDS },
 );
 

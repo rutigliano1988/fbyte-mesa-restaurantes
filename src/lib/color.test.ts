@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { accentTheme, contrastRatio, DEFAULT_ACCENT, INK, normalizeHex, readableTextOn, WHITE } from './color';
+import {
+  accentTheme,
+  contrastRatio,
+  DEFAULT_ACCENT,
+  INK,
+  normalizeHex,
+  publicAccentTheme,
+  readableTextOn,
+  WHITE,
+} from './color';
 
 describe('normalizeHex', () => {
   it('acepta #RRGGBB con o sin almohadilla y lo pasa a mayúsculas', () => {
@@ -36,5 +45,20 @@ describe('accentTheme', () => {
 
   it('un gris medio no llega a 4,5:1 ni con ink ni con blanco', () => {
     expect(accentTheme('#7A7A7A').meetsAA).toBe(false);
+  });
+});
+
+describe('publicAccentTheme (mini-web)', () => {
+  it('usa el color guardado si su texto llega a 4,5:1', () => {
+    expect(publicAccentTheme('#FFC48A')).toEqual(accentTheme('#FFC48A'));
+  });
+
+  it('si el color guardado no llega a 4,5:1, usa el navy por defecto', () => {
+    expect(publicAccentTheme('#7A7A7A')).toEqual(accentTheme(DEFAULT_ACCENT));
+  });
+
+  it('sin color o con un color no válido, también el navy por defecto', () => {
+    expect(publicAccentTheme(null).accent).toBe(DEFAULT_ACCENT);
+    expect(publicAccentTheme('rojo').accent).toBe(DEFAULT_ACCENT);
   });
 });

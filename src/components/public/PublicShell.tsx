@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import type { CSSProperties, ReactNode } from 'react';
 import { BRAND } from '@/config/brand';
-import { accentTheme } from '@/lib/color';
+import { publicAccentTheme } from '@/lib/color';
 import { LOCALE_NAMES, type Locale } from '@/lib/i18n/locales';
 import { getMessages } from '@/lib/i18n/messages';
 import { localeHref } from '@/lib/public/format';
@@ -19,7 +19,7 @@ export function PublicShell({
   path: string;
   children: ReactNode;
 }) {
-  const theme = accentTheme(restaurant.accentColor);
+  const theme = publicAccentTheme(restaurant.accentColor);
   const m = getMessages(locale);
   const style = { '--accent': theme.accent, '--on-accent': theme.onAccent, '--accent-text': theme.accentText } as CSSProperties;
   return (
@@ -34,7 +34,7 @@ export function PublicShell({
                 href={localeHref(path, l)}
                 hrefLang={l}
                 lang={l}
-                aria-current={l === locale ? 'true' : undefined}
+                aria-current={l === locale ? 'page' : undefined}
                 className={l === locale ? 'font-bold text-neutral-900' : 'hover:underline'}
               >
                 {LOCALE_NAMES[l]}
