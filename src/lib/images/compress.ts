@@ -22,17 +22,26 @@ export function checkSourceFile(file: { type: string; size: number }): string | 
 
 /**
  * Solo navegador: reduce la foto y la pasa a WebP (calidad 0,82; baja si aún pesa más de 2 MB).
- * Si el navegador no sabe crear WebP, usa JPEG con fondo blanco.
+ * Respeta la orientación EXIF. Si el navegador no sabe crear WebP, usa JPEG con fondo blanco.
+ * Lanza IMAGE_ENCODE_FAILED si la foto no se puede decodificar o no hay contexto 2D,
+ * e IMAGE_TOO_BIG si ninguna calidad baja de 2 MB. Libera el canvas al terminar.
  */
 export async function compressImage(file: File, kind: MediaKind): Promise<Blob> {
-  const bitmap = await createImageBitmap(file);
+  let bitmap: ImageBitmap;
+  try {
+    bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+  } catch {
+    throw new Error('IMAGE_ENCODE_FAILED');
+  }
+  const canvas = document.createElement('canvas');
   try {
     const { width, height } = fitWithin(bitmap.width, bitmap.height, MAX_SIDE[kind]);
-    const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
     const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('CANVAS_UNAVAILABLE');
+    if (!ctx) throw new Error('IMAGE_ENCODE_FAILED');
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     let encoded = false;
     for (const type of ['image/webp', 'image/jpeg'] as const) {
       ctx.clearRect(0, 0, width, height);
@@ -51,5 +60,7 @@ export async function compressImage(file: File, kind: MediaKind): Promise<Blob> 
     throw new Error(encoded ? 'IMAGE_TOO_BIG' : 'IMAGE_ENCODE_FAILED');
   } finally {
     bitmap.close();
+    canvas.width = 0;
+    canvas.height = 0;
   }
 }
