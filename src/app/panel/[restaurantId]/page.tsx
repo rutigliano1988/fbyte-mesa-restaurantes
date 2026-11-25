@@ -6,7 +6,7 @@ import { StatusBadge } from '@/components/ui/StatusBadge';
 import { requirePanelAccess } from '@/lib/auth/guards';
 import { siteUrl } from '@/lib/env';
 import { getMissingFields, getRestaurantLocal, getRestaurantSchedule } from '@/lib/local/data';
-import { missingFieldLabels, onboardingSteps } from '@/lib/onboarding';
+import { missingFieldLinks, onboardingSteps, type MissingFieldLink } from '@/lib/onboarding';
 import { can, ROLE_LABELS } from '@/lib/permissions';
 
 export default async function PanelHome({ params }: { params: Promise<{ restaurantId: string }> }) {
@@ -15,7 +15,7 @@ export default async function PanelHome({ params }: { params: Promise<{ restaura
   const { status, slug } = ctx.restaurant;
   const canEdit = can(ctx.role, 'restaurant.edit');
 
-  let setup: { steps: ReturnType<typeof onboardingSteps>; missing: string[] } | null = null;
+  let setup: { steps: ReturnType<typeof onboardingSteps>; missing: MissingFieldLink[] } | null = null;
   if (status === 'setup' && canEdit) {
     const [{ profile, descriptions }, { services }, missing] = await Promise.all([
       getRestaurantLocal(restaurantId),
@@ -36,7 +36,7 @@ export default async function PanelHome({ params }: { params: Promise<{ restaura
         enabledLocales: profile.enabledLocales,
         descriptionLocales: Object.keys(descriptions),
       }),
-      missing: missingFieldLabels(missing),
+      missing: missingFieldLinks(restaurantId, missing),
     };
   }
 

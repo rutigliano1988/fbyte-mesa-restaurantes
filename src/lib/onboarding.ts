@@ -73,3 +73,25 @@ export const MISSING_FIELD_LABELS: Record<string, string> = {
 export function missingFieldLabels(codes: string[]): string[] {
   return codes.map((code) => MISSING_FIELD_LABELS[code] ?? code);
 }
+
+/** Sección del panel donde se rellena cada dato que falta (ruta relativa a /panel/<id>). */
+const MISSING_FIELD_SECTIONS: Record<string, string> = {
+  address_line: '/local#contacto',
+  postal_code: '/local#contacto',
+  city: '/local#contacto',
+  contact: '/local#contacto',
+  services: '/horario',
+  legal_name: '/local#datos-fiscales',
+  tax_id: '/local#datos-fiscales',
+};
+
+export type MissingFieldLink = { code: string; label: string; href: string };
+
+/** Lo que falta para publicar, cada dato con el enlace a su sección. */
+export function missingFieldLinks(restaurantId: string, codes: string[]): MissingFieldLink[] {
+  return codes.map((code) => ({
+    code,
+    label: MISSING_FIELD_LABELS[code] ?? code,
+    href: `/panel/${restaurantId}${MISSING_FIELD_SECTIONS[code] ?? '/local'}`,
+  }));
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { missingFieldLabels, onboardingSteps, type OnboardingInput } from './onboarding';
+import { missingFieldLabels, missingFieldLinks, onboardingSteps, type OnboardingInput } from './onboarding';
 
 const id = '11111111-1111-1111-1111-111111111111';
 const empty: OnboardingInput = {
@@ -49,4 +49,15 @@ describe('onboardingSteps', () => {
 
 it('missingFieldLabels traduce los códigos de la BD', () => {
   expect(missingFieldLabels(['contact', 'tax_id', 'otro'])).toEqual(['Teléfono o email de contacto', 'CIF o NIF (datos fiscales)', 'otro']);
+});
+
+it('missingFieldLinks enlaza cada dato que falta a su sección del panel', () => {
+  const id = '11111111-1111-1111-1111-111111111111';
+  expect(missingFieldLinks(id, ['address_line', 'contact', 'services', 'tax_id', 'otro'])).toEqual([
+    { code: 'address_line', label: 'Calle y número', href: `/panel/${id}/local#contacto` },
+    { code: 'contact', label: 'Teléfono o email de contacto', href: `/panel/${id}/local#contacto` },
+    { code: 'services', label: 'Al menos un servicio en el horario', href: `/panel/${id}/horario` },
+    { code: 'tax_id', label: 'CIF o NIF (datos fiscales)', href: `/panel/${id}/local#datos-fiscales` },
+    { code: 'otro', label: 'otro', href: `/panel/${id}/local` },
+  ]);
 });
