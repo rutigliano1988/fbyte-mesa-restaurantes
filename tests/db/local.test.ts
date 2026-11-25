@@ -35,7 +35,7 @@ describe('ficha del restaurante', () => {
 
   it('valida los formatos de los datos públicos y fiscales', () =>
     tx(async (c) => {
-      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a' });
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a', status: 'setup' });
       await asSuperuser(c);
       const bad: [string, RegExp][] = [
         ["postal_code = '53000'", /restaurants_postal_code_check/],
@@ -173,7 +173,7 @@ describe('galería', () => {
 describe('cambio de dirección (slug)', () => {
   it('guarda la anterior como redirección y deja volver a ella', () =>
     tx(async (c) => {
-      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a' });
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a', status: 'setup' });
       const admin = await createUser(c, 'admin@example.com');
       await addMember(c, a, admin.id, 'admin');
       await as(c, admin);
@@ -190,8 +190,8 @@ describe('cambio de dirección (slug)', () => {
 
   it('no deja usar la dirección actual o antigua de otro restaurante, ni una reservada', () =>
     tx(async (c) => {
-      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a' });
-      const b = await insertRestaurant(c, { name: 'Rest B', slug: 'rest-b' });
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a', status: 'setup' });
+      const b = await insertRestaurant(c, { name: 'Rest B', slug: 'rest-b', status: 'setup' });
       const adminA = await createUser(c, 'a@example.com');
       const adminB = await createUser(c, 'b@example.com');
       await addMember(c, a, adminA.id, 'admin');
@@ -207,6 +207,31 @@ describe('cambio de dirección (slug)', () => {
       const fbyte = await createUser(c, 'fbyte@example.com', { platformAdmin: true });
       await as(c, fbyte);
       await expectDbError(c, "select * from public.create_restaurant('Otro', 'rest-a', 'x@example.com')", [], /SLUG_TAKEN/);
+    }));
+
+  it('rechaza una dirección nula', () =>
+    tx(async (c) => {
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a', status: 'setup' });
+      const admin = await createUser(c, 'admin@example.com');
+      await addMember(c, a, admin.id, 'admin');
+      await as(c, admin);
+      await expectDbError(c, 'select public.change_slug($1, $2)', [a, null], /INVALID_INPUT/);
+    }));
+
+  it('como mucho 10 direcciones antiguas por restaurante, pero siempre se puede volver a una', () =>
+    tx(async (c) => {
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a', status: 'setup' });
+      const admin = await createUser(c, 'admin@example.com');
+      await addMember(c, a, admin.id, 'admin');
+      await as(c, admin);
+      const sql = 'select public.change_slug($1, $2)';
+      for (let i = 1; i <= 10; i++) await c.query(sql, [a, `rest-a-${i}`]);
+      const { rows } = await c.query('select count(*)::int as n from public.slug_redirects where restaurant_id = $1', [a]);
+      expect(rows[0].n).toBe(10);
+      await expectDbError(c, sql, [a, 'rest-a-11'], /SLUG_CHANGE_LIMIT/);
+      // Volver a una dirección antigua no suma: deja de ser redirección y la actual pasa a serlo.
+      const back = await c.query('select public.change_slug($1, $2) as slug', [a, 'rest-a']);
+      expect(back.rows[0].slug).toBe('rest-a');
     }));
 
   it('solo el administrador cambia la dirección y cada uno ve solo sus redirecciones', () =>

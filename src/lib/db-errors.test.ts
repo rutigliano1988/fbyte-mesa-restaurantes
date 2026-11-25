@@ -31,6 +31,9 @@ it.each([
   ['The object exceeded the maximum allowed size', 'La imagen pesa demasiado. Prueba con otra más pequeña.'],
   ['mime type image/gif is not supported', 'Ese formato de imagen no vale. Usa JPG, PNG o WebP.'],
   ['new row violates row-level security policy for table "objects"', 'No tienes permiso para hacer esto.'],
+  ['PUBLISHED_FIELDS_REQUIRED', 'Tu web está publicada: este dato no se puede dejar vacío.'],
+  ['INVALID_INPUT', 'Revisa los datos: hay algo que no es válido.'],
+  ['SLUG_CHANGE_LIMIT', 'Ya has cambiado la dirección demasiadas veces. Escríbenos a FByte si necesitas otra.'],
 ])('%s → mensaje claro', (raw, msg) => {
   expect(mapDbError(raw)).toBe(msg);
 });

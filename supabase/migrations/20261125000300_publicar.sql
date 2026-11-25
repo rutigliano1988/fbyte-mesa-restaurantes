@@ -30,6 +30,26 @@ begin
   return v_missing;
 end $$;
 
+/**
+ * Una web publicada siempre tiene dirección, contacto y datos fiscales (aviso legal y mini-web):
+ * con status 'active' no se puede dejar vacío ninguno, ni pasar a 'active' sin ellos.
+ * publish_restaurant comprueba lo mismo antes; pasar a 'setup' o 'disabled' no exige nada.
+ */
+create or replace function public.check_published_fields() returns trigger
+language plpgsql security definer set search_path = '' as $$
+begin
+  if new.status = 'active' and (
+       new.address_line is null or new.postal_code is null or new.city is null
+       or (new.phone is null and new.contact_email is null)
+       or new.legal_name is null or new.tax_id is null
+     ) then
+    raise exception 'PUBLISHED_FIELDS_REQUIRED' using errcode = 'P0001';
+  end if;
+  return new;
+end $$;
+create trigger restaurants_published_fields before update on public.restaurants
+  for each row execute function public.check_published_fields();
+
 /** El administrador publica: acepta el contrato de encargado del tratamiento y pasa a 'active'. */
 create or replace function public.publish_restaurant(p_restaurant_id uuid, p_dpa_version text)
 returns void language plpgsql security definer set search_path = '' as $$
@@ -160,6 +180,7 @@ language sql stable security definer set search_path = '' as $$
   select r.slug, r.enabled_locales, r.updated_at from public.restaurants r where r.status = 'active' order by r.slug
 $$;
 
+revoke execute on function public.check_published_fields() from public, anon, authenticated;
 revoke execute on function public.restaurant_missing_fields(uuid), public.publish_restaurant(uuid, text),
   public.get_public_restaurant(text), public.list_public_slugs()
   from public, anon;

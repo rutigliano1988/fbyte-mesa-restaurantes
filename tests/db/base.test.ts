@@ -91,7 +91,7 @@ describe('aislamiento entre restaurantes', () => {
 describe('permisos por rol', () => {
   it('sala no puede editar el restaurante; el administrador sí', () =>
     tx(async (c) => {
-      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a' });
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a', status: 'setup' });
       const staff = await createUser(c, 'sala@example.com');
       const admin = await createUser(c, 'admin@example.com');
       await addMember(c, a, staff.id, 'staff');

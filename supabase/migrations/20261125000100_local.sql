@@ -149,9 +149,17 @@ begin
   if not public.has_role(p_restaurant_id, '{admin}') then
     raise exception 'FORBIDDEN' using errcode = '42501';
   end if;
+  if v_new is null then
+    raise exception 'INVALID_INPUT' using errcode = '22023';
+  end if;
   select r.slug into v_old from public.restaurants r where r.id = p_restaurant_id for update;
   if v_old = v_new then
     return v_new;
+  end if;
+  -- Como mucho 10 direcciones antiguas. Volver a una de ellas no suma (deja de ser redirección).
+  if (select count(*) from public.slug_redirects s
+       where s.restaurant_id = p_restaurant_id and s.old_slug <> v_new) >= 10 then
+    raise exception 'SLUG_CHANGE_LIMIT' using errcode = 'P0001';
   end if;
   -- Volver a una dirección antigua propia: deja de ser redirección.
   delete from public.slug_redirects s where s.old_slug = v_new and s.restaurant_id = p_restaurant_id;
@@ -196,7 +204,9 @@ create policy slug_redirects_select on public.slug_redirects for select to authe
 -- Storage: bucket público con las fotos; solo el administrador sube y borra en su carpeta ----
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('restaurant-media', 'restaurant-media', true, 2097152, array['image/webp', 'image/jpeg'])
-on conflict (id) do nothing;
+on conflict (id) do update
+  set public = excluded.public, file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
 
 -- Ruta {restaurant_id}/logo-…, cover-… o gallery/… (.webp o .jpg) y ser administrador de ese restaurante.
 create or replace function public.can_manage_media(p_bucket_id text, p_name text) returns boolean

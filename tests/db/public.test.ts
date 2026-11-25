@@ -119,6 +119,70 @@ describe('restaurant_missing_fields y publish_restaurant', () => {
     }));
 });
 
+describe('datos obligatorios de una web publicada', () => {
+  /** Restaurante publicado por su administrador, con todos los datos. */
+  async function published(c: pg.PoolClient) {
+    const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a', status: 'setup' });
+    const admin = await createUser(c, 'admin@example.com');
+    await addMember(c, a, admin.id, 'admin');
+    await makePublishable(c, a);
+    await as(c, admin);
+    await c.query('select public.publish_restaurant($1, $2)', [a, DPA_VERSION]);
+    return { a, admin };
+  }
+
+  it('con la web publicada no se puede vaciar un dato legal o de contacto', () =>
+    tx(async (c) => {
+      const { a, admin } = await published(c);
+      await as(c, admin);
+      for (const set of [
+        'tax_id = null',
+        'legal_name = null',
+        'address_line = null',
+        'postal_code = null',
+        'city = null',
+        'phone = null, contact_email = null',
+      ]) {
+        await expectDbError(c, `update public.restaurants set ${set} where id = $1`, [a], /PUBLISHED_FIELDS_REQUIRED/);
+      }
+    }));
+
+  it('con la web publicada se puede editar manteniendo los datos y cambiar el teléfono por un email', () =>
+    tx(async (c) => {
+      const { a, admin } = await published(c);
+      await as(c, admin);
+      const r = await c.query(
+        "update public.restaurants set cuisine = 'Vasca', contact_email = 'hola@pepe.es', phone = null where id = $1",
+        [a],
+      );
+      expect(r.rowCount).toBe(1);
+    }));
+
+  it('FByte desactiva una web publicada y la vuelve a activar con los datos completos', () =>
+    tx(async (c) => {
+      const { a } = await published(c);
+      const fbyte = await createUser(c, 'fbyte@example.com', { platformAdmin: true });
+      await as(c, fbyte);
+      await c.query("select public.set_restaurant_status($1, 'disabled')", [a]);
+      await c.query("select public.set_restaurant_status($1, 'setup')", [a]);
+      await c.query("select public.set_restaurant_status($1, 'active')", [a]);
+      const { rows } = await c.query('select status from public.restaurants where id = $1', [a]);
+      expect(rows[0].status).toBe('active');
+    }));
+
+  it('no se reactiva una web a la que le falta un dato legal', () =>
+    tx(async (c) => {
+      const { a } = await published(c);
+      const fbyte = await createUser(c, 'fbyte@example.com', { platformAdmin: true });
+      await as(c, fbyte);
+      await c.query("select public.set_restaurant_status($1, 'disabled')", [a]);
+      await asSuperuser(c);
+      await c.query('update public.restaurants set tax_id = null where id = $1', [a]);
+      await as(c, fbyte);
+      await expectDbError(c, "select public.set_restaurant_status($1, 'active')", [a], /PUBLISHED_FIELDS_REQUIRED/);
+    }));
+});
+
 describe('get_public_restaurant', () => {
   /** Restaurante activo con descripción, fotos, un servicio y tres cierres (pasado, próximo y lejano). */
   async function publicRestaurant(c: pg.PoolClient): Promise<string> {
@@ -263,7 +327,11 @@ describe('privilegios del Hito 2', () => {
   it('nadie ejecuta directamente los triggers nuevos', () =>
     tx(async (c) => {
       for (const role of ['anon', 'authenticated']) {
-        for (const fn of ['public.limit_restaurant_photos()', 'public.check_slug_not_redirected()']) {
+        for (const fn of [
+          'public.limit_restaurant_photos()',
+          'public.check_slug_not_redirected()',
+          'public.check_published_fields()',
+        ]) {
           const { rows } = await c.query('select has_function_privilege($1, $2, $3) as ok', [role, fn, 'execute']);
           expect(rows[0].ok, `${role} → ${fn}`).toBe(false);
         }
