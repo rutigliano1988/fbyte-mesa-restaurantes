@@ -90,6 +90,16 @@ describe('restaurant_missing_fields y publish_restaurant', () => {
       await expectDbError(c, sql, [a, DPA_VERSION], /ALREADY_PUBLISHED/);
     }));
 
+  it('el administrador de un restaurante desactivado no puede publicar', () =>
+    tx(async (c) => {
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a', status: 'disabled' });
+      const admin = await createUser(c, 'admin@example.com');
+      await addMember(c, a, admin.id, 'admin');
+      await makePublishable(c, a);
+      await as(c, admin);
+      await expectDbError(c, 'select public.publish_restaurant($1, $2)', [a, DPA_VERSION], /FORBIDDEN/);
+    }));
+
   it('FByte no activa un restaurante sin contrato, pero sí lo desactiva y lo reactiva', () =>
     tx(async (c) => {
       const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a', status: 'setup' });
@@ -161,7 +171,7 @@ describe('get_public_restaurant', () => {
         logo_path: `${a}/logo-abc.webp`,
         legal_name: 'Taberna Pepe SL',
         tax_id: 'B12345674',
-        descriptions: { es: 'Hola', en: 'Hi' },
+        descriptions: { es: 'Hola' },
         photos: [`${a}/gallery/a.webp`, `${a}/gallery/b.webp`],
         services: [{ name: 'Comida', weekday: 1, start_minute: 780, end_minute: 960 }],
       });
@@ -169,6 +179,19 @@ describe('get_public_restaurant', () => {
       for (const key of ['status', 'dpa_accepted_at', 'dpa_accepted_by', 'dpa_version', 'published_at', 'created_at']) {
         expect(data).not.toHaveProperty(key);
       }
+    }));
+
+  it('solo da descripciones de los idiomas activos', () =>
+    tx(async (c) => {
+      const a = await publicRestaurant(c);
+      await as(c, null);
+      let { rows } = await c.query("select public.get_public_restaurant('rest-a') as data");
+      expect(rows[0].data.descriptions).toEqual({ es: 'Hola' });
+      await asSuperuser(c);
+      await c.query("update public.restaurants set enabled_locales = '{es,en}' where id = $1", [a]);
+      await as(c, null);
+      ({ rows } = await c.query("select public.get_public_restaurant('rest-a') as data"));
+      expect(rows[0].data.descriptions).toEqual({ es: 'Hola', en: 'Hi' });
     }));
 
   it('da null para restaurantes en configuración, desactivados o que no existen', () =>

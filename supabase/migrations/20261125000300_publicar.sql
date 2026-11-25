@@ -1,5 +1,9 @@
 -- Mesa · Hito 2 · publicar la mini-web y datos públicos para anon.
 
+-- Los restaurantes activados en el Hito 1 sin contrato de encargado aceptado vuelven a
+-- configuración hasta que su administrador los publique aceptándolo.
+update public.restaurants set status = 'setup' where status = 'active' and dpa_accepted_at is null;
+
 /** Lo que falta para poder publicar (vacío = se puede publicar). */
 create or replace function public.restaurant_missing_fields(p_restaurant_id uuid) returns text[]
 language plpgsql stable security definer set search_path = '' as $$
@@ -124,7 +128,8 @@ begin
     'tax_id', r.tax_id,
     'descriptions', coalesce((
       select jsonb_object_agg(t.locale, t.description)
-        from public.restaurant_translations t where t.restaurant_id = r.id
+        from public.restaurant_translations t
+       where t.restaurant_id = r.id and t.locale = any (r.enabled_locales)
     ), '{}'::jsonb),
     'photos', coalesce((
       select jsonb_agg(p.path order by p.position, p.created_at)
