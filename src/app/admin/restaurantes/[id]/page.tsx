@@ -22,7 +22,7 @@ export default async function AdminRestaurantPage({ params }: { params: Promise<
   const { id } = await params;
   if (!uuidSchema.safeParse(id).success) notFound();
   const supabase = await createClient();
-  const { data: restaurant } = await supabase.from('restaurants').select('id, name, slug, status, created_at').eq('id', id).maybeSingle();
+  const { data: restaurant } = await supabase.from('restaurants').select('id, name, slug, status, created_at, dpa_accepted_at').eq('id', id).maybeSingle();
   if (!restaurant) notFound();
   const [{ data: team }, { data: invitations }] = await Promise.all([
     supabase.rpc('restaurant_team', { p_restaurant_id: id }),
@@ -47,7 +47,10 @@ export default async function AdminRestaurantPage({ params }: { params: Promise<
         <h1 className="text-3xl font-extrabold tracking-tight">{restaurant.name}</h1>
         <StatusBadge status={status} />
       </div>
-      <p className="text-muted">/{restaurant.slug}</p>
+      <p className="text-muted">
+        /{restaurant.slug}
+        {status === 'setup' && ' · El restaurante publica su web desde su panel, tras aceptar el contrato de encargado del tratamiento.'}
+      </p>
 
       <div className="flex flex-wrap gap-3">
         <Link href={`/panel/${id}`} className={buttonClass('secondary')}>
@@ -57,7 +60,8 @@ export default async function AdminRestaurantPage({ params }: { params: Promise<
           <input type="hidden" name="restaurantId" value={id} />
           {status === 'disabled' ? (
             <>
-              <input type="hidden" name="status" value="active" />
+              {/* Sin contrato aceptado vuelve a configuración: publicar es cosa del restaurante. */}
+              <input type="hidden" name="status" value={restaurant.dpa_accepted_at ? 'active' : 'setup'} />
               <Button type="submit">Reactivar</Button>
             </>
           ) : (
@@ -69,14 +73,10 @@ export default async function AdminRestaurantPage({ params }: { params: Promise<
             </>
           )}
         </form>
-        {status === 'setup' && (
-          <form action={setRestaurantStatus}>
-            <input type="hidden" name="restaurantId" value={id} />
-            <input type="hidden" name="status" value="active" />
-            <Button type="submit" variant="secondary">
-              Marcar como activo
-            </Button>
-          </form>
+        {status === 'active' && (
+          <Link href={`/${restaurant.slug}`} target="_blank" className={buttonClass('ghost')}>
+            Ver su web
+          </Link>
         )}
       </div>
 
