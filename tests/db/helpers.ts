@@ -91,3 +91,19 @@ export async function expectDbError(
   expect(error, `se esperaba un error ${pattern}`).toBeDefined();
   expect(String((error as Error).message)).toMatch(pattern);
 }
+
+/** Deja el restaurante listo para publicar: dirección, contacto, datos fiscales y un servicio. */
+export async function makePublishable(c: pg.PoolClient, restaurantId: string): Promise<void> {
+  await asSuperuser(c);
+  await c.query(
+    `update public.restaurants
+        set address_line = 'Calle Mayor 1', postal_code = '28013', city = 'Madrid', phone = '910000000',
+            legal_name = 'Taberna Pepe SL', tax_id = 'B12345674'
+      where id = $1`,
+    [restaurantId],
+  );
+  await c.query(
+    "insert into public.services (restaurant_id, name, weekday, start_minute, end_minute) values ($1, 'Comida', 1, 780, 960)",
+    [restaurantId],
+  );
+}
