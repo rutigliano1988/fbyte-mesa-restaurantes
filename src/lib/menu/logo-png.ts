@@ -12,12 +12,19 @@ export async function logoToPng(bytes: Uint8Array): Promise<Uint8Array> {
   return new Uint8Array(png);
 }
 
-/** Descarga el logo público y lo pasa a PNG. null si no se puede: el PDF sale sin logo. */
+/** Tamaño máximo del logo que se descarga: el límite del bucket (2 MB). */
+export const LOGO_MAX_BYTES = 2_097_152;
+
+/** Descarga el logo público y lo pasa a PNG. null si no se puede (fallo, más de 5 s o más de 2 MB): el PDF sale sin logo. */
 export async function fetchLogoPng(url: string): Promise<Uint8Array | null> {
   try {
-    const res = await fetch(url, { cache: 'no-store' });
+    const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(5000) });
     if (!res.ok) return null;
-    return await logoToPng(new Uint8Array(await res.arrayBuffer()));
+    const declared = Number(res.headers.get('content-length'));
+    if (Number.isFinite(declared) && declared > LOGO_MAX_BYTES) return null;
+    const buf = await res.arrayBuffer();
+    if (buf.byteLength > LOGO_MAX_BYTES) return null;
+    return await logoToPng(new Uint8Array(buf));
   } catch {
     return null;
   }
