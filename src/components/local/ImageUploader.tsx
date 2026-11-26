@@ -3,21 +3,26 @@
 import { useState, useTransition } from 'react';
 import { buttonClass } from '@/components/ui/Button';
 import { Notice } from '@/components/ui/Notice';
+import { uploadDishPhoto } from '@/lib/actions/dishes';
 import { uploadRestaurantImage } from '@/lib/actions/media';
 import type { FormState } from '@/lib/forms';
-import { checkSourceFile, compressImage } from '@/lib/images/compress';
-import type { MediaKind } from '@/lib/media';
+import { checkSourceFile, compressImage, type ImageTarget } from '@/lib/images/compress';
 
-/** Elige fotos, las reduce y pasa a WebP en el navegador y las sube una a una con la server action. */
+/**
+ * Elige fotos, las reduce y pasa a WebP en el navegador y las sube una a una con la server action.
+ * kind="dish" (con dishId) sube la foto de un plato; el resto, las imágenes del local.
+ */
 export function ImageUploader({
   restaurantId,
   kind,
+  dishId,
   label,
   multiple = false,
   disabled = false,
 }: {
   restaurantId: string;
-  kind: MediaKind;
+  kind: ImageTarget;
+  dishId?: string;
   label: string;
   multiple?: boolean;
   disabled?: boolean;
@@ -44,8 +49,9 @@ export function ImageUploader({
         const fd = new FormData();
         fd.set('restaurantId', restaurantId);
         fd.set('kind', kind);
+        if (dishId) fd.set('dishId', dishId);
         fd.set('file', new File([blob], blob.type === 'image/webp' ? 'foto.webp' : 'foto.jpg', { type: blob.type }));
-        const result = await uploadRestaurantImage(fd);
+        const result = await (kind === 'dish' ? uploadDishPhoto(fd) : uploadRestaurantImage(fd));
         setState(result);
         if (result.error) return;
       }
