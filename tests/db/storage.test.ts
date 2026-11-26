@@ -62,3 +62,51 @@ describe('Storage: bucket restaurant-media', () => {
       await expectDbError(c, insertObject, [`${a}/logo-abc.webp`, null], /row-level security/);
     }));
 });
+
+describe('Storage: fotos de platos (Hito 3)', () => {
+  it('Administrador y Encargado suben y borran fotos en dishes/', () =>
+    tx(async (c) => {
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a', status: 'setup' });
+      const admin = await createUser(c, 'admin@example.com');
+      const manager = await createUser(c, 'enc@example.com');
+      await addMember(c, a, admin.id, 'admin');
+      await addMember(c, a, manager.id, 'manager');
+      for (const [u, name] of [
+        [admin, `${a}/dishes/croquetas-1.webp`],
+        [manager, `${a}/dishes/croquetas-2.jpg`],
+      ] as const) {
+        await as(c, u);
+        expect((await c.query(insertObject, [name, u.id])).rowCount).toBe(1);
+        expect((await c.query('delete from storage.objects where name = $1', [name])).rowCount).toBe(1);
+      }
+    }));
+
+  it('ni Sala, ni otro restaurante, ni rutas raras, ni anon', () =>
+    tx(async (c) => {
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a' });
+      const b = await insertRestaurant(c, { name: 'Rest B', slug: 'rest-b' });
+      const manager = await createUser(c, 'enc@example.com');
+      const staff = await createUser(c, 'sala@example.com');
+      await addMember(c, a, manager.id, 'manager');
+      await addMember(c, a, staff.id, 'staff');
+      await as(c, staff);
+      await expectDbError(c, insertObject, [`${a}/dishes/foto.webp`, staff.id], /row-level security/);
+      await as(c, manager);
+      for (const name of [`${b}/dishes/foto.webp`, `${a}/dishes/sub/foto.webp`, `${a}/dishes/FOTO.webp`, `${a}/dishes/foto.png`, `${a}/dishes.webp`]) {
+        await expectDbError(c, insertObject, [name, manager.id], /row-level security/);
+      }
+      await as(c, null);
+      await expectDbError(c, insertObject, [`${a}/dishes/foto.webp`, null], /row-level security/);
+    }));
+
+  it('el Encargado sigue sin tocar logo, portada ni galería', () =>
+    tx(async (c) => {
+      const a = await insertRestaurant(c, { name: 'Rest A', slug: 'rest-a', status: 'setup' });
+      const manager = await createUser(c, 'enc@example.com');
+      await addMember(c, a, manager.id, 'manager');
+      await as(c, manager);
+      for (const name of [`${a}/logo-abc.webp`, `${a}/cover-abc.jpg`, `${a}/gallery/foto-1.webp`]) {
+        await expectDbError(c, insertObject, [name, manager.id], /row-level security/);
+      }
+    }));
+});
