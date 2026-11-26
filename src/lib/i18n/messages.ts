@@ -1,6 +1,7 @@
+import type { Allergen, DishTag } from '@/lib/menu/codes';
 import type { Locale } from './locales';
 
-/** Textos de la interfaz pública (mini-web). Los textos del restaurante los escribe el restaurante. */
+/** Textos de la interfaz pública (mini-web y carta). Los textos del restaurante los escribe el restaurante. */
 export type PublicMessages = {
   directions: string;
   viewMap: string;
@@ -34,6 +35,37 @@ export type PublicMessages = {
   logoAlt: (name: string) => string;
   coverAlt: (name: string) => string;
   photoAlt: (name: string, n: number) => string;
+  // Hito 3: carta
+  viewMenu: string;
+  menuTitle: (name: string) => string;
+  menuTabs: string;
+  menuIndex: string;
+  menuEmpty: string;
+  dailyMenu: string;
+  specialMenu: string;
+  menuIncludes: string;
+  viewDailyMenu: string;
+  /** En el orden de ALLERGENS. */
+  allergens: Record<Allergen, string>;
+  /** En el orden de DISH_TAGS. */
+  tags: Record<DishTag, string>;
+  allergensLabel: string;
+  marketPrice: string;
+  marketPriceTitle: string;
+  perKg: string;
+  per100g: string;
+  vatIncluded: string;
+  allergenDisclaimer: string;
+  askStaffAllergens: string;
+  unavailable: string;
+  filterTitle: string;
+  filterIntro: string;
+  filterHidden: (n: number) => string;
+  filterClear: string;
+  filterAllHidden: string;
+  dishPhotoAlt: (dish: string) => string;
+  enlargePhoto: (dish: string) => string;
+  closePhoto: string;
 };
 
 const es: PublicMessages = {
@@ -68,6 +100,57 @@ const es: PublicMessages = {
   logoAlt: (name) => `Logo de ${name}`,
   coverAlt: (name) => `Foto de ${name}`,
   photoAlt: (name, n) => `Foto ${n} de ${name}`,
+  viewMenu: 'Ver carta',
+  menuTitle: (name) => `Carta de ${name}`,
+  menuTabs: 'Cartas',
+  menuIndex: 'Categorías',
+  menuEmpty: 'Ahora mismo no hay ninguna carta disponible. Vuelve a mirar más tarde.',
+  dailyMenu: 'Menú del día',
+  specialMenu: 'Menú especial',
+  menuIncludes: 'Incluye',
+  viewDailyMenu: 'Ver el menú',
+  allergens: {
+    gluten: 'Gluten',
+    crustaceans: 'Crustáceos',
+    eggs: 'Huevos',
+    fish: 'Pescado',
+    peanuts: 'Cacahuetes',
+    soy: 'Soja',
+    milk: 'Leche',
+    nuts: 'Frutos de cáscara',
+    celery: 'Apio',
+    mustard: 'Mostaza',
+    sesame: 'Sésamo',
+    sulphites: 'Sulfitos',
+    lupin: 'Altramuces',
+    molluscs: 'Moluscos',
+  },
+  tags: {
+    vegan: 'Vegano',
+    vegetarian: 'Vegetariano',
+    gluten_free: 'Sin gluten',
+    spicy: 'Picante',
+    new: 'Novedad',
+    recommended: 'Recomendado',
+  },
+  allergensLabel: 'Alérgenos',
+  marketPrice: 'S/M',
+  marketPriceTitle: 'Según mercado',
+  perKg: '/kg',
+  per100g: '/100\u00a0g',
+  vatIncluded: 'Precios con IVA incluido',
+  allergenDisclaimer:
+    'Esta información es orientativa. Si tienes una alergia o intolerancia, confírmalo con el personal antes de pedir.',
+  askStaffAllergens: 'Pregunta al personal por los alérgenos',
+  unavailable: 'Agotado',
+  filterTitle: 'Filtrar por alérgenos',
+  filterIntro: 'Marca lo que no puedes tomar y ocultamos los platos que lo llevan.',
+  filterHidden: (n) => (n === 1 ? 'Hay 1 plato oculto por tu filtro.' : `Hay ${n} platos ocultos por tu filtro.`),
+  filterClear: 'Quitar el filtro',
+  filterAllHidden: 'Ningún plato de esta carta encaja con tu filtro.',
+  dishPhotoAlt: (dish) => `Foto de ${dish}`,
+  enlargePhoto: (dish) => `Ampliar la foto de ${dish}`,
+  closePhoto: 'Cerrar',
 };
 
 const en: PublicMessages = {
@@ -102,6 +185,57 @@ const en: PublicMessages = {
   logoAlt: (name) => `${name} logo`,
   coverAlt: (name) => `Photo of ${name}`,
   photoAlt: (name, n) => `Photo ${n} of ${name}`,
+  viewMenu: 'View menu',
+  menuTitle: (name) => `${name} menu`,
+  menuTabs: 'Menus',
+  menuIndex: 'Categories',
+  menuEmpty: 'There is no menu available right now. Please check again later.',
+  dailyMenu: 'Menu of the day',
+  specialMenu: 'Special menu',
+  menuIncludes: 'Includes',
+  viewDailyMenu: 'See the menu',
+  allergens: {
+    gluten: 'Gluten',
+    crustaceans: 'Crustaceans',
+    eggs: 'Eggs',
+    fish: 'Fish',
+    peanuts: 'Peanuts',
+    soy: 'Soy',
+    milk: 'Milk',
+    nuts: 'Tree nuts',
+    celery: 'Celery',
+    mustard: 'Mustard',
+    sesame: 'Sesame',
+    sulphites: 'Sulphites',
+    lupin: 'Lupin',
+    molluscs: 'Molluscs',
+  },
+  tags: {
+    vegan: 'Vegan',
+    vegetarian: 'Vegetarian',
+    gluten_free: 'Gluten-free',
+    spicy: 'Spicy',
+    new: 'New',
+    recommended: 'Recommended',
+  },
+  allergensLabel: 'Allergens',
+  marketPrice: 'Market price',
+  marketPriceTitle: 'Market price',
+  perKg: '/kg',
+  per100g: '/100\u00a0g',
+  vatIncluded: 'Prices include VAT',
+  allergenDisclaimer:
+    'This information is for guidance only. If you have an allergy or intolerance, please check with our staff before ordering.',
+  askStaffAllergens: 'Ask our staff about allergens',
+  unavailable: 'Sold out',
+  filterTitle: 'Filter by allergens',
+  filterIntro: 'Tick what you can’t eat and we’ll hide the dishes that contain it.',
+  filterHidden: (n) => (n === 1 ? '1 dish hidden by your filter.' : `${n} dishes hidden by your filter.`),
+  filterClear: 'Clear filter',
+  filterAllHidden: 'No dish on this menu matches your filter.',
+  dishPhotoAlt: (dish) => `Photo of ${dish}`,
+  enlargePhoto: (dish) => `Enlarge the photo of ${dish}`,
+  closePhoto: 'Close',
 };
 
 const ca: PublicMessages = {
@@ -136,6 +270,57 @@ const ca: PublicMessages = {
   logoAlt: (name) => `Logotip de ${name}`,
   coverAlt: (name) => `Foto de ${name}`,
   photoAlt: (name, n) => `Foto ${n} de ${name}`,
+  viewMenu: 'Veure la carta',
+  menuTitle: (name) => `Carta de ${name}`,
+  menuTabs: 'Cartes',
+  menuIndex: 'Categories',
+  menuEmpty: 'Ara mateix no hi ha cap carta disponible. Torna-hi a mirar més tard.',
+  dailyMenu: 'Menú del dia',
+  specialMenu: 'Menú especial',
+  menuIncludes: 'Inclou',
+  viewDailyMenu: 'Veure el menú',
+  allergens: {
+    gluten: 'Gluten',
+    crustaceans: 'Crustacis',
+    eggs: 'Ous',
+    fish: 'Peix',
+    peanuts: 'Cacauets',
+    soy: 'Soja',
+    milk: 'Llet',
+    nuts: 'Fruits de closca',
+    celery: 'Api',
+    mustard: 'Mostassa',
+    sesame: 'Sèsam',
+    sulphites: 'Sulfits',
+    lupin: 'Tramussos',
+    molluscs: 'Mol·luscs',
+  },
+  tags: {
+    vegan: 'Vegà',
+    vegetarian: 'Vegetarià',
+    gluten_free: 'Sense gluten',
+    spicy: 'Picant',
+    new: 'Novetat',
+    recommended: 'Recomanat',
+  },
+  allergensLabel: 'Al·lèrgens',
+  marketPrice: 'S/M',
+  marketPriceTitle: 'Segons mercat',
+  perKg: '/kg',
+  per100g: '/100\u00a0g',
+  vatIncluded: 'Preus amb IVA inclòs',
+  allergenDisclaimer:
+    'Aquesta informació és orientativa. Si tens una al·lèrgia o intolerància, confirma-ho amb el personal abans de demanar.',
+  askStaffAllergens: 'Pregunta al personal pels al·lèrgens',
+  unavailable: 'Exhaurit',
+  filterTitle: 'Filtra per al·lèrgens',
+  filterIntro: 'Marca el que no pots prendre i amagarem els plats que ho porten.',
+  filterHidden: (n) => (n === 1 ? 'Hi ha 1 plat amagat pel teu filtre.' : `Hi ha ${n} plats amagats pel teu filtre.`),
+  filterClear: 'Treu el filtre',
+  filterAllHidden: 'Cap plat d’aquesta carta encaixa amb el teu filtre.',
+  dishPhotoAlt: (dish) => `Foto de ${dish}`,
+  enlargePhoto: (dish) => `Amplia la foto de ${dish}`,
+  closePhoto: 'Tanca',
 };
 
 const fr: PublicMessages = {
@@ -170,6 +355,57 @@ const fr: PublicMessages = {
   logoAlt: (name) => `Logo de ${name}`,
   coverAlt: (name) => `Photo de ${name}`,
   photoAlt: (name, n) => `Photo ${n} de ${name}`,
+  viewMenu: 'Voir la carte',
+  menuTitle: (name) => `Carte de ${name}`,
+  menuTabs: 'Cartes',
+  menuIndex: 'Catégories',
+  menuEmpty: 'Aucune carte n’est disponible pour le moment. Revenez un peu plus tard.',
+  dailyMenu: 'Menu du jour',
+  specialMenu: 'Menu spécial',
+  menuIncludes: 'Comprend',
+  viewDailyMenu: 'Voir le menu',
+  allergens: {
+    gluten: 'Gluten',
+    crustaceans: 'Crustacés',
+    eggs: 'Œufs',
+    fish: 'Poisson',
+    peanuts: 'Arachides',
+    soy: 'Soja',
+    milk: 'Lait',
+    nuts: 'Fruits à coque',
+    celery: 'Céleri',
+    mustard: 'Moutarde',
+    sesame: 'Sésame',
+    sulphites: 'Sulfites',
+    lupin: 'Lupin',
+    molluscs: 'Mollusques',
+  },
+  tags: {
+    vegan: 'Végan',
+    vegetarian: 'Végétarien',
+    gluten_free: 'Sans gluten',
+    spicy: 'Épicé',
+    new: 'Nouveauté',
+    recommended: 'Recommandé',
+  },
+  allergensLabel: 'Allergènes',
+  marketPrice: 'Prix du marché',
+  marketPriceTitle: 'Prix du marché',
+  perKg: '/kg',
+  per100g: '/100\u00a0g',
+  vatIncluded: 'Prix TVA incluse',
+  allergenDisclaimer:
+    'Ces informations sont données à titre indicatif. Si vous avez une allergie ou une intolérance, vérifiez auprès du personnel avant de commander.',
+  askStaffAllergens: 'Renseignez-vous auprès du personnel sur les allergènes',
+  unavailable: 'Épuisé',
+  filterTitle: 'Filtrer par allergènes',
+  filterIntro: 'Cochez ce que vous ne pouvez pas manger et nous masquerons les plats qui en contiennent.',
+  filterHidden: (n) => (n === 1 ? '1 plat masqué par votre filtre.' : `${n} plats masqués par votre filtre.`),
+  filterClear: 'Retirer le filtre',
+  filterAllHidden: 'Aucun plat de cette carte ne correspond à votre filtre.',
+  dishPhotoAlt: (dish) => `Photo de ${dish}`,
+  enlargePhoto: (dish) => `Agrandir la photo de ${dish}`,
+  closePhoto: 'Fermer',
 };
 
 const de: PublicMessages = {
@@ -204,6 +440,57 @@ const de: PublicMessages = {
   logoAlt: (name) => `Logo von ${name}`,
   coverAlt: (name) => `Foto von ${name}`,
   photoAlt: (name, n) => `Foto ${n} von ${name}`,
+  viewMenu: 'Speisekarte ansehen',
+  menuTitle: (name) => `Speisekarte von ${name}`,
+  menuTabs: 'Speisekarten',
+  menuIndex: 'Kategorien',
+  menuEmpty: 'Im Moment ist keine Speisekarte verfügbar. Schauen Sie später noch einmal vorbei.',
+  dailyMenu: 'Tagesmenü',
+  specialMenu: 'Sondermenü',
+  menuIncludes: 'Inklusive',
+  viewDailyMenu: 'Menü ansehen',
+  allergens: {
+    gluten: 'Gluten',
+    crustaceans: 'Krebstiere',
+    eggs: 'Eier',
+    fish: 'Fisch',
+    peanuts: 'Erdnüsse',
+    soy: 'Soja',
+    milk: 'Milch',
+    nuts: 'Schalenfrüchte',
+    celery: 'Sellerie',
+    mustard: 'Senf',
+    sesame: 'Sesam',
+    sulphites: 'Sulfite',
+    lupin: 'Lupinen',
+    molluscs: 'Weichtiere',
+  },
+  tags: {
+    vegan: 'Vegan',
+    vegetarian: 'Vegetarisch',
+    gluten_free: 'Glutenfrei',
+    spicy: 'Scharf',
+    new: 'Neu',
+    recommended: 'Empfohlen',
+  },
+  allergensLabel: 'Allergene',
+  marketPrice: 'Tagespreis',
+  marketPriceTitle: 'Tagespreis',
+  perKg: '/kg',
+  per100g: '/100\u00a0g',
+  vatIncluded: 'Preise inkl. MwSt.',
+  allergenDisclaimer:
+    'Diese Angaben dienen nur zur Orientierung. Wenn Sie eine Allergie oder Unverträglichkeit haben, fragen Sie bitte vor der Bestellung beim Personal nach.',
+  askStaffAllergens: 'Fragen Sie das Personal nach Allergenen',
+  unavailable: 'Ausverkauft',
+  filterTitle: 'Nach Allergenen filtern',
+  filterIntro: 'Kreuzen Sie an, was Sie nicht essen dürfen, und wir blenden die Gerichte aus, die es enthalten.',
+  filterHidden: (n) => (n === 1 ? '1 Gericht durch Ihren Filter ausgeblendet.' : `${n} Gerichte durch Ihren Filter ausgeblendet.`),
+  filterClear: 'Filter entfernen',
+  filterAllHidden: 'Kein Gericht dieser Speisekarte passt zu Ihrem Filter.',
+  dishPhotoAlt: (dish) => `Foto von ${dish}`,
+  enlargePhoto: (dish) => `Foto von ${dish} vergrößern`,
+  closePhoto: 'Schließen',
 };
 
 const it: PublicMessages = {
@@ -238,9 +525,63 @@ const it: PublicMessages = {
   logoAlt: (name) => `Logo di ${name}`,
   coverAlt: (name) => `Foto di ${name}`,
   photoAlt: (name, n) => `Foto ${n} di ${name}`,
+  viewMenu: 'Vedi il menù',
+  menuTitle: (name) => `Menù di ${name}`,
+  menuTabs: 'Menù',
+  menuIndex: 'Categorie',
+  menuEmpty: 'Al momento non c’è nessun menù disponibile. Riprova più tardi.',
+  dailyMenu: 'Menù del giorno',
+  specialMenu: 'Menù speciale',
+  menuIncludes: 'Include',
+  viewDailyMenu: 'Vedi il menù',
+  allergens: {
+    gluten: 'Glutine',
+    crustaceans: 'Crostacei',
+    eggs: 'Uova',
+    fish: 'Pesce',
+    peanuts: 'Arachidi',
+    soy: 'Soia',
+    milk: 'Latte',
+    nuts: 'Frutta a guscio',
+    celery: 'Sedano',
+    mustard: 'Senape',
+    sesame: 'Sesamo',
+    sulphites: 'Solfiti',
+    lupin: 'Lupini',
+    molluscs: 'Molluschi',
+  },
+  tags: {
+    vegan: 'Vegano',
+    vegetarian: 'Vegetariano',
+    gluten_free: 'Senza glutine',
+    spicy: 'Piccante',
+    new: 'Novità',
+    recommended: 'Consigliato',
+  },
+  allergensLabel: 'Allergeni',
+  marketPrice: 'Prezzo di mercato',
+  marketPriceTitle: 'Prezzo di mercato',
+  perKg: '/kg',
+  per100g: '/100\u00a0g',
+  vatIncluded: 'Prezzi IVA inclusa',
+  allergenDisclaimer:
+    'Queste informazioni sono indicative. Se hai un’allergia o un’intolleranza, chiedi conferma al personale prima di ordinare.',
+  askStaffAllergens: 'Chiedi al personale informazioni sugli allergeni',
+  unavailable: 'Esaurito',
+  filterTitle: 'Filtra per allergeni',
+  filterIntro: 'Seleziona ciò che non puoi mangiare e nasconderemo i piatti che lo contengono.',
+  filterHidden: (n) => (n === 1 ? '1 piatto nascosto dal tuo filtro.' : `${n} piatti nascosti dal tuo filtro.`),
+  filterClear: 'Togli il filtro',
+  filterAllHidden: 'Nessun piatto di questo menù corrisponde al tuo filtro.',
+  dishPhotoAlt: (dish) => `Foto di ${dish}`,
+  enlargePhoto: (dish) => `Ingrandisci la foto di ${dish}`,
+  closePhoto: 'Chiudi',
 };
 
 export const MESSAGES: Record<Locale, PublicMessages> = { es, en, ca, fr, de, it };
+
+/** Texto fijo de las tarjetas QR impresas (no depende del idioma: siempre castellano e inglés). */
+export const QR_CARD_TEXT = 'Escanea para ver la carta · Scan to see the menu';
 
 export function getMessages(locale: Locale): PublicMessages {
   return MESSAGES[locale];
