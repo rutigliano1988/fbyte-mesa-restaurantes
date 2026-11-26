@@ -31,3 +31,13 @@ export function withLang(path: string, locale: Locale | null | undefined): strin
 export function localeHref(path: string, locale: Locale): string {
   return `${path}?lang=${locale}`;
 }
+
+/** Dirección de la carta pública. */
+export function menuPath(slug: string): string {
+  return `/${slug}/menu`;
+}
+
+/** Pestaña de una carta, conservando el idioma: /la-taberna/menu?lang=en&carta=<id>. */
+export function menuTabHref(slug: string, locale: Locale, menuId: string): string {
+  return `${localeHref(menuPath(slug), locale)}&carta=${encodeURIComponent(menuId)}`;
+}

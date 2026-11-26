@@ -7,6 +7,7 @@ import { publicMediaUrl } from '@/lib/media';
 import { isValidSlug } from '@/lib/slug';
 import { createPublicClient } from '@/lib/supabase/public';
 import { parsePublicLookup, type PublicLookup } from './restaurant-schema';
+import { parsePublicMenu, type PublicMenuData } from './menu-schema';
 import { PUBLIC_ALL_TAG, publicRestaurantTag } from './tags';
 
 /** Una hora como red de seguridad; lo normal es que las acciones del panel invaliden al momento. */
@@ -49,3 +50,36 @@ export const getPublicSlugs = unstable_cache(
 export function mediaUrl(path: string): string {
   return publicMediaUrl(serverEnv().NEXT_PUBLIC_SUPABASE_URL, path);
 }
+
+/**
+ * Carta pública por dirección (solo restaurantes activos). Misma etiqueta que la mini-web: las acciones del menú
+ * invalidan las dos. La visibilidad del menú del día no se cachea: la calcula la página al pintar.
+ */
+export const getPublicMenu = cache(async (rawSlug: string): Promise<PublicMenuData | null> => {
+  const slug = rawSlug.trim().toLowerCase();
+  if (!isValidSlug(slug)) return null;
+  return unstable_cache(
+    async () => {
+      const { data, error } = await createPublicClient().rpc('get_public_menu', { p_slug: slug });
+      if (error) throw new Error(`get_public_menu: ${error.message}`);
+      return parsePublicMenu(data);
+    },
+    ['public-menu', CACHE_VERSION, slug],
+    { tags: [publicRestaurantTag(slug), PUBLIC_ALL_TAG], revalidate: REVALIDATE_SECONDS },
+  )();
+});
+
+/** Para sitemap.xml: restaurantes activos con alguna carta con platos. */
+export const getPublicMenuSlugs = unstable_cache(
+  async (): Promise<PublicSlug[]> => {
+    const { data, error } = await createPublicClient().rpc('list_public_menus');
+    if (error) throw new Error(`list_public_menus: ${error.message}`);
+    return ((data ?? []) as { slug: string; enabled_locales: string[]; updated_at: string }[]).map((r) => ({
+      slug: r.slug,
+      enabledLocales: sortLocales(r.enabled_locales),
+      updatedAt: r.updated_at,
+    }));
+  },
+  ['public-menu-slugs', CACHE_VERSION],
+  { tags: [PUBLIC_ALL_TAG], revalidate: REVALIDATE_SECONDS },
+);

@@ -7,9 +7,10 @@ const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'
 /** Datos estructurados schema.org/Restaurant. Si "closes" es anterior a "opens", schema.org lo entiende como del día siguiente. */
 export function restaurantJsonLd(
   r: PublicRestaurant,
-  opts: { url: string; mediaUrl: (path: string) => string },
+  opts: { url: string; mediaUrl: (path: string) => string; menuUrl?: string },
 ): Record<string, unknown> {
   const ld: Record<string, unknown> = { '@context': 'https://schema.org', '@type': 'Restaurant', name: r.name, url: opts.url };
+  if (opts.menuUrl) ld.hasMenu = opts.menuUrl;
   if (r.cuisine) ld.servesCuisine = r.cuisine;
   const price = priceLabel(r.priceRange);
   if (price) ld.priceRange = price;

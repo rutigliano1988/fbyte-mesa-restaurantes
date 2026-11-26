@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SAMPLE_RESTAURANT } from './fixtures';
-import { directionsUrl, fullAddress, localeHref, mapEmbedUrl, priceLabel, withLang } from './format';
+import { directionsUrl, fullAddress, localeHref, mapEmbedUrl, menuPath, menuTabHref, priceLabel, withLang } from './format';
 import { jsonLdScript, restaurantJsonLd } from './jsonld';
 import { languageAlternates, metaDescription, OG_LOCALE } from './seo';
 
@@ -27,6 +27,11 @@ describe('formato público', () => {
     expect(withLang('/la-taberna', 'es')).toBe('/la-taberna');
     expect(withLang('/la-taberna', 'en')).toBe('/la-taberna?lang=en');
     expect(withLang('/la-taberna', null)).toBe('/la-taberna');
+  });
+
+  it('menuPath y menuTabHref llevan a la carta conservando el idioma', () => {
+    expect(menuPath('la-taberna')).toBe('/la-taberna/menu');
+    expect(menuTabHref('la-taberna', 'en', 'abc-123')).toBe('/la-taberna/menu?lang=en&carta=abc-123');
   });
 });
 
@@ -81,5 +86,15 @@ describe('JSON-LD', () => {
 
   it('jsonLdScript no deja cerrar la etiqueta script', () => {
     expect(jsonLdScript({ name: '</script><script>alert(1)</script>' })).not.toContain('</script>');
+  });
+
+  it('hasMenu apunta a la carta cuando la hay', () => {
+    expect(ld.hasMenu).toBeUndefined();
+    const withMenu = restaurantJsonLd(SAMPLE_RESTAURANT, {
+      url: `${site}/la-taberna`,
+      mediaUrl: (p) => `https://cdn.test/${p}`,
+      menuUrl: `${site}/la-taberna/menu`,
+    });
+    expect(withMenu.hasMenu).toBe(`${site}/la-taberna/menu`);
   });
 });
