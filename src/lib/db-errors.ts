@@ -33,6 +33,19 @@ const RULES: [RegExp, string][] = [
   [/restaurants_enabled_locales_es_check/, 'El castellano siempre tiene que estar activo.'],
   [/exceeded the maximum allowed size|payload too large/i, 'La imagen pesa demasiado. Prueba con otra más pequeña.'],
   [/mime type/i, 'Ese formato de imagen no vale. Usa JPG, PNG o WebP.'],
+  // Hito 3: menú
+  [/MENU_LIMIT/, 'Ya tienes 20 cartas. Borra alguna para crear otra.'],
+  [/SECTION_LIMIT/, 'Esta carta ya tiene 40 secciones. Borra alguna para añadir otra.'],
+  [/ITEM_LIMIT/, 'Esta sección ya tiene 100 platos. Quita alguno o crea otra sección.'],
+  [/DISH_LIMIT/, 'Ya tienes 500 platos. Borra los que no uses para crear otros.'],
+  [/PRICE_LIMIT/, 'Un plato puede tener como mucho 4 precios.'],
+  [/MARKET_PRICE_ALONE/, 'Un precio «según mercado» va solo: quita los demás precios.'],
+  [/INLINE_ONLY_DAILY/, 'Los platos escritos a mano solo valen en el menú del día y en los menús especiales.'],
+  [/menu_items_menu_dish_key/, 'Ese plato ya está en esta carta.'],
+  [/dishes_tags_allergens_check/, 'Esas etiquetas no encajan con los alérgenos del plato.'],
+  [/dish_prices_amount_check/, 'Revisa los precios: van de 0 a 99.999,99 € y «según mercado» no lleva importe.'],
+  [/menus_(kind|time|dates|weekdays|price_cents)_check/, 'Revisa la programación del menú: días, horas y fechas.'],
+  [/(dishes|menus|menu_sections)_names_check|menu_items_inline_names_check/, 'Falta el nombre en castellano o algún texto es demasiado largo.'],
 ];
 
 export function mapDbError(message: string | null | undefined): string {

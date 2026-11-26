@@ -1,7 +1,10 @@
 import { MAX_UPLOAD_BYTES, type MediaKind } from '@/lib/media';
 
+/** Qué se sube: lo del local (Hito 2) o la foto de un plato. */
+export type ImageTarget = MediaKind | 'dish';
+
 /** Lado mayor máximo tras reducir, en píxeles. */
-export const MAX_SIDE: Record<MediaKind, number> = { logo: 512, cover: 1920, gallery: 1600 };
+export const MAX_SIDE: Record<ImageTarget, number> = { logo: 512, cover: 1920, gallery: 1600, dish: 1200 };
 export const ACCEPTED_SOURCE_TYPES = ['image/jpeg', 'image/png', 'image/webp'] as const;
 export const MAX_SOURCE_BYTES = 20 * 1024 * 1024;
 export const QUALITY_STEPS = [0.82, 0.72, 0.62] as const;
@@ -26,7 +29,7 @@ export function checkSourceFile(file: { type: string; size: number }): string | 
  * Lanza IMAGE_ENCODE_FAILED si la foto no se puede decodificar o no hay contexto 2D,
  * e IMAGE_TOO_BIG si ninguna calidad baja de 2 MB. Libera el canvas al terminar.
  */
-export async function compressImage(file: File, kind: MediaKind): Promise<Blob> {
+export async function compressImage(file: File, kind: ImageTarget): Promise<Blob> {
   let bitmap: ImageBitmap;
   try {
     bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });

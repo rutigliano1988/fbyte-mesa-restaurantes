@@ -8,7 +8,7 @@ const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
 const NO_SUCH_DATE = 'Esa fecha no existe.';
 
 /** '2026-02-28' sí; '2026-02-31' o '2026-13-01' no. Espera el formato aaaa-mm-dd. */
-function isRealDate(iso: string): boolean {
+export function isRealDate(iso: string): boolean {
   const [y, m, d] = iso.split('-').map(Number);
   const date = new Date(Date.UTC(y, m - 1, d));
   return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;

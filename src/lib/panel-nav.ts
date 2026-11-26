@@ -6,6 +6,8 @@ export type NavItem = { href: string; label: string };
 const ITEMS: { path: string; label: string; permission: Permission | null }[] = [
   { path: '', label: 'Inicio', permission: null },
   { path: '/local', label: 'Local', permission: 'restaurant.edit' },
+  // Sala también entra: ahí marca los platos agotados.
+  { path: '/menu', label: 'Menú', permission: 'menu.toggle_unavailable' },
   { path: '/horario', label: 'Horario', permission: 'settings.booking' },
   { path: '/usuarios', label: 'Equipo', permission: 'users.manage' },
 ];

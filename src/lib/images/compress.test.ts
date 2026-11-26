@@ -2,6 +2,10 @@ import { describe, expect, it } from 'vitest';
 import { checkSourceFile, fitWithin, MAX_SIDE } from './compress';
 
 describe('fitWithin', () => {
+  it('las fotos de platos se quedan en 1200 px', () => {
+    expect(fitWithin(4000, 3000, MAX_SIDE.dish)).toEqual({ width: 1200, height: 900 });
+  });
+
   it('reduce manteniendo la proporción', () => {
     expect(fitWithin(4000, 3000, MAX_SIDE.cover)).toEqual({ width: 1920, height: 1440 });
     expect(fitWithin(3000, 4000, MAX_SIDE.gallery)).toEqual({ width: 1200, height: 1600 });

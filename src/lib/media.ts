@@ -31,6 +31,17 @@ export function isRestaurantMediaPath(restaurantId: string, path: string): boole
   return new RegExp(`^${restaurantId}/(logo-[a-z0-9-]+|cover-[a-z0-9-]+|gallery/[a-z0-9-]+)\\.(webp|jpg)$`).test(path);
 }
 
+/** Foto de un plato: {restaurante}/dishes/{id}.webp. La gestionan Administrador y Encargado (can_manage_media). */
+export function dishPhotoPath(restaurantId: string, ext: 'webp' | 'jpg', id: string): string {
+  return `${restaurantId}/dishes/${id}.${ext}`;
+}
+
+/** Misma regla que can_manage_media y dishes_photo_path_check. */
+export function isDishPhotoPath(restaurantId: string, path: string): boolean {
+  if (!new RegExp(`^${UUID}$`).test(restaurantId)) return false;
+  return new RegExp(`^${restaurantId}/dishes/[a-z0-9-]+\\.(webp|jpg)$`).test(path);
+}
+
 export function publicMediaUrl(supabaseUrl: string, path: string): string {
   const base = supabaseUrl.replace(/\/+$/, '');
   return `${base}/storage/v1/object/public/${MEDIA_BUCKET}/${path.split('/').map(encodeURIComponent).join('/')}`;

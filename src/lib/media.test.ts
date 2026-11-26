@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { checkUpload, extensionFor, isMediaKind, isRestaurantMediaPath, mediaPath, publicMediaUrl } from './media';
+import {
+  checkUpload,
+  dishPhotoPath,
+  extensionFor,
+  isDishPhotoPath,
+  isMediaKind,
+  isRestaurantMediaPath,
+  mediaPath,
+  publicMediaUrl,
+} from './media';
 
 const rid = '11111111-1111-4111-8111-111111111111';
 const fid = '22222222-2222-4222-8222-222222222222';
@@ -17,6 +26,16 @@ describe('rutas de Storage', () => {
     expect(isRestaurantMediaPath(rid, `${rid}/logo-x.png`)).toBe(false);
     expect(isRestaurantMediaPath(rid, `${rid}/otra/x.webp`)).toBe(false);
     expect(isRestaurantMediaPath('no-uuid', 'no-uuid/logo-x.webp')).toBe(false);
+  });
+
+  it('las fotos de platos van en dishes/ de su restaurante', () => {
+    expect(dishPhotoPath(rid, 'webp', fid)).toBe(`${rid}/dishes/${fid}.webp`);
+    expect(isDishPhotoPath(rid, dishPhotoPath(rid, 'jpg', fid))).toBe(true);
+    expect(isDishPhotoPath(rid, `${fid}/dishes/x.webp`)).toBe(false);
+    expect(isDishPhotoPath(rid, `${rid}/dishes/sub/x.webp`)).toBe(false);
+    expect(isDishPhotoPath(rid, `${rid}/gallery/x.webp`)).toBe(false);
+    expect(isDishPhotoPath('no-uuid', 'no-uuid/dishes/x.webp')).toBe(false);
+    expect(isRestaurantMediaPath(rid, dishPhotoPath(rid, 'webp', fid))).toBe(false);
   });
 
   it('publicMediaUrl apunta al bucket público', () => {
