@@ -80,4 +80,22 @@ describe('menusToShow', () => {
     expect(menusToShow(data, new Date('2026-12-05T12:30:00Z'), 'Europe/Madrid').map((m) => m.id)).toEqual(['carta-1']);
     expect(menusToShow(null, new Date(), 'Europe/Madrid')).toEqual([]);
   });
+
+  it('con los agotados ocultos, una carta con todos los platos agotados no sale', () => {
+    const allOut: PublicMenuData = {
+      ...data,
+      unavailableMode: 'hide',
+      menus: data.menus.map((m) => ({
+        ...m,
+        sections: m.sections.map((s) => ({
+          ...s,
+          items: s.items.map((i) => (i.kind === 'dish' ? { ...i, dish: { ...i.dish, unavailable: true } } : i)),
+        })),
+      })),
+    };
+    const at = new Date('2026-11-30T12:30:00Z');
+    // La carta solo tiene platos de la carta (todos agotados); el menú del día lleva platos escritos a mano.
+    expect(menusToShow(allOut, at, 'Europe/Madrid').map((m) => m.id)).toEqual(['daily-1']);
+    expect(menusToShow({ ...allOut, unavailableMode: 'strike' }, at, 'Europe/Madrid').map((m) => m.id)).toEqual(['daily-1', 'carta-1']);
+  });
 });

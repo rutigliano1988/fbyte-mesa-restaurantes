@@ -92,8 +92,14 @@ export function buildMenuView(
   };
 }
 
-/** Cartas que se ven ahora y tienen algún plato, en el orden de las pestañas (menús del día y especiales primero). */
+/**
+ * Cartas que se ven ahora y tienen algún plato, en el orden de las pestañas (menús del día y especiales primero).
+ * Con los agotados ocultos, un plato agotado no cuenta (los escritos a mano nunca están agotados).
+ */
 export function menusToShow(data: PublicMenuData | null, now: Date, timeZone: string): PublicMenu[] {
   if (!data) return [];
-  return visibleMenus(data.menus, now, timeZone).filter((m) => m.sections.some((s) => s.items.length > 0));
+  const hideUnavailable = data.unavailableMode === 'hide';
+  return visibleMenus(data.menus, now, timeZone).filter((m) =>
+    m.sections.some((s) => s.items.some((item) => item.kind === 'inline' || !(hideUnavailable && item.dish.unavailable))),
+  );
 }
