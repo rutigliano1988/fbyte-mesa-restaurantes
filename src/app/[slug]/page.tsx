@@ -1,15 +1,18 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
+import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
+import { DailyMenuCard } from '@/components/public/DailyMenuCard';
 import { MapEmbed } from '@/components/public/MapEmbed';
 import { OpeningHours } from '@/components/public/OpeningHours';
 import { PublicShell } from '@/components/public/PublicShell';
 import { siteUrl } from '@/lib/env';
 import { isLocale, langParam } from '@/lib/i18n/locales';
 import { getMessages } from '@/lib/i18n/messages';
-import { getPublicRestaurant, mediaUrl } from '@/lib/public/data';
-import { directionsUrl, fullAddress, mapEmbedUrl, localeHref, priceLabel } from '@/lib/public/format';
+import { getPublicMenu, getPublicRestaurant, mediaUrl } from '@/lib/public/data';
+import { directionsUrl, fullAddress, mapEmbedUrl, localeHref, menuPath, menuTabHref, priceLabel } from '@/lib/public/format';
 import { jsonLdScript, restaurantJsonLd } from '@/lib/public/jsonld';
+import { menusToShow } from '@/lib/public/menu-view';
 import { requestLocale } from '@/lib/public/locale';
 import { descriptionFor } from '@/lib/public/restaurant-schema';
 import { languageAlternates, metaDescription, OG_LOCALE, publicUrl } from '@/lib/public/seo';
@@ -72,7 +75,11 @@ export default async function RestaurantPage(props: Props) {
     { network: 'Facebook', url: r.facebook },
     { network: 'TikTok', url: r.tiktok },
   ].filter((s): s is { network: string; url: string } => s.url !== null);
-  const jsonLd = restaurantJsonLd(r, { url: publicUrl(siteUrl(), path, locale), mediaUrl });
+  // Cartas que se ven ahora (zona horaria del restaurante); el menú del día o especial que toca, destacado.
+  const menus = menusToShow(await getPublicMenu(r.slug), new Date(), r.timezone);
+  const featuredMenu = menus.find((x) => x.kind !== 'carta') ?? null;
+  const menuUrl = menus.length > 0 ? publicUrl(siteUrl(), menuPath(r.slug), locale) : undefined;
+  const jsonLd = restaurantJsonLd(r, { url: publicUrl(siteUrl(), path, locale), mediaUrl, menuUrl });
   const accentButton = 'inline-flex items-center rounded-lg bg-[var(--accent)] px-5 py-3 font-bold text-[var(--on-accent)] hover:opacity-90';
 
   return (
@@ -110,6 +117,11 @@ export default async function RestaurantPage(props: Props) {
 
       <main className="mx-auto flex max-w-3xl flex-col gap-10 px-4 pt-6">
         <div className="flex flex-wrap gap-3">
+          {menus.length > 0 && (
+            <Link href={localeHref(menuPath(r.slug), locale)} className={accentButton}>
+              {m.viewMenu}
+            </Link>
+          )}
           {address && (
             <a href={directionsUrl(address)} target="_blank" rel="noopener noreferrer" className={accentButton}>
               {m.directions}
@@ -121,6 +133,10 @@ export default async function RestaurantPage(props: Props) {
             </a>
           )}
         </div>
+
+        {featuredMenu && (
+          <DailyMenuCard menu={featuredMenu} locale={locale} messages={m} href={menuTabHref(r.slug, locale, featuredMenu.id)} />
+        )}
 
         {description && (
           <section>
