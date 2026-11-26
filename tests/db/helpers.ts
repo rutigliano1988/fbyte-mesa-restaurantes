@@ -107,3 +107,121 @@ export async function makePublishable(c: pg.PoolClient, restaurantId: string): P
     [restaurantId],
   );
 }
+
+export type MenuKind = 'carta' | 'daily' | 'special';
+export type PriceKind = 'fixed' | 'per_kg' | 'per_100g' | 'market';
+
+/** Carta (por defecto) o menú del día/especial con precio, días y, en el especial, fechas por defecto. */
+export async function insertMenu(
+  c: pg.PoolClient,
+  restaurantId: string,
+  m: {
+    kind?: MenuKind;
+    name?: string;
+    active?: boolean;
+    position?: number;
+    priceCents?: number;
+    weekdays?: number[];
+    startMinute?: number;
+    endMinute?: number;
+    dateFrom?: string;
+    dateTo?: string;
+  } = {},
+): Promise<string> {
+  await asSuperuser(c);
+  const kind = m.kind ?? 'carta';
+  const scheduled = kind !== 'carta';
+  const { rows } = await c.query<{ id: string }>(
+    `insert into public.menus (restaurant_id, kind, names, active, position, price_cents, weekdays,
+                               start_minute, end_minute, date_from, date_to)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) returning id`,
+    [
+      restaurantId,
+      kind,
+      JSON.stringify({ es: m.name ?? (scheduled ? 'Menú del día' : 'Carta') }),
+      m.active ?? true,
+      m.position ?? 0,
+      scheduled ? (m.priceCents ?? 1500) : null,
+      scheduled ? (m.weekdays ?? [1, 2, 3, 4, 5]) : null,
+      m.startMinute ?? null,
+      m.endMinute ?? null,
+      m.dateFrom ?? (kind === 'special' ? '2026-12-24' : null),
+      m.dateTo ?? (kind === 'special' ? '2026-12-24' : null),
+    ],
+  );
+  return rows[0].id;
+}
+
+export async function insertSection(
+  c: pg.PoolClient,
+  restaurantId: string,
+  menuId: string,
+  name = 'Entrantes',
+  position = 0,
+): Promise<string> {
+  await asSuperuser(c);
+  const { rows } = await c.query<{ id: string }>(
+    'insert into public.menu_sections (restaurant_id, menu_id, names, position) values ($1, $2, $3, $4) returning id',
+    [restaurantId, menuId, JSON.stringify({ es: name }), position],
+  );
+  return rows[0].id;
+}
+
+/** Plato con sus precios (en orden). Sin precios, un plato es válido. */
+export async function insertDish(
+  c: pg.PoolClient,
+  restaurantId: string,
+  d: {
+    name?: string;
+    names?: Record<string, string>;
+    descriptions?: Record<string, string>;
+    allergens?: string[];
+    tags?: string[];
+    unavailable?: boolean;
+    photoPath?: string;
+    prices?: { kind?: PriceKind; cents?: number | null; labels?: Record<string, string> }[];
+  } = {},
+): Promise<string> {
+  await asSuperuser(c);
+  const { rows } = await c.query<{ id: string }>(
+    `insert into public.dishes (restaurant_id, names, descriptions, allergens, tags, unavailable, photo_path)
+     values ($1, $2, $3, $4, $5, $6, $7) returning id`,
+    [
+      restaurantId,
+      JSON.stringify(d.names ?? { es: d.name ?? 'Croquetas' }),
+      JSON.stringify(d.descriptions ?? {}),
+      d.allergens ?? [],
+      d.tags ?? [],
+      d.unavailable ?? false,
+      d.photoPath ?? null,
+    ],
+  );
+  for (const [position, p] of (d.prices ?? []).entries()) {
+    const kind = p.kind ?? 'fixed';
+    await c.query(
+      'insert into public.dish_prices (restaurant_id, dish_id, kind, price_cents, labels, position) values ($1, $2, $3, $4, $5, $6)',
+      [restaurantId, rows[0].id, kind, kind === 'market' ? null : (p.cents ?? 1000), JSON.stringify(p.labels ?? {}), position],
+    );
+  }
+  return rows[0].id;
+}
+
+/** Elemento de una sección: un plato del restaurante o uno escrito a mano (solo en menús del día y especiales). */
+export async function insertItem(
+  c: pg.PoolClient,
+  restaurantId: string,
+  sectionId: string,
+  item: { dishId: string } | { inlineName: string; inlineAllergens?: string[] },
+  position = 0,
+): Promise<string> {
+  await asSuperuser(c);
+  const dishId = 'dishId' in item ? item.dishId : null;
+  const inline = 'inlineName' in item ? JSON.stringify({ es: item.inlineName }) : null;
+  const allergens = 'inlineName' in item ? (item.inlineAllergens ?? []) : [];
+  const { rows } = await c.query<{ id: string }>(
+    `insert into public.menu_items (restaurant_id, section_id, dish_id, inline_names, inline_allergens, position)
+     values ($1, $2, $3, $4, $5, $6) returning id`,
+    [restaurantId, sectionId, dishId, inline, allergens, position],
+  );
+  return rows[0].id;
+}
