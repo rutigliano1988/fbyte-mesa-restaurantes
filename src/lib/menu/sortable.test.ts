@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { dragAnnouncements, dropId, moveId } from './sortable';
+import { dragAnnouncements, dropId, moveAnnouncement, moveId } from './sortable';
 
 describe('ordenar listas', () => {
   it('moveId sube o baja un puesto y no se sale de la lista', () => {
@@ -23,5 +23,9 @@ describe('ordenar listas', () => {
     expect(say.onDragOver({ active: { id: 'b' }, over: { id: 'a' } } as never)).toBe('«Postres» pasaría a la posición 1 de 3.');
     expect(say.onDragEnd({ active: { id: 'b' }, over: { id: 'c' } } as never)).toBe('Has soltado «Postres» en la posición 3 de 3.');
     expect(say.onDragCancel({ active: { id: 'b' }, over: null } as never)).toBe('Has cancelado. «Postres» vuelve a su sitio.');
+  });
+
+  it('moveAnnouncement dice el nombre y la nueva posición', () => {
+    expect(moveAnnouncement('Postres', 1, 3)).toBe('“Postres” pasa a la posición 1 de 3.');
   });
 });

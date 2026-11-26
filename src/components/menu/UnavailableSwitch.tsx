@@ -2,6 +2,7 @@
 
 import { useOptimistic, useState, useTransition } from 'react';
 import { setDishUnavailable } from '@/lib/actions/dishes';
+import { GENERIC_ERROR } from '@/lib/menu/sortable';
 
 /** Interruptor de «Agotado», grande para usarlo con el móvil en pleno servicio. Cambia al momento y se guarda detrás. */
 export function UnavailableSwitch({
@@ -26,8 +27,12 @@ export function UnavailableSwitch({
     setError(null);
     startTransition(async () => {
       setOptimistic(next);
-      const result = await setDishUnavailable(restaurantId, dishId, next);
-      if (result.error) setError(result.error);
+      try {
+        const result = await setDishUnavailable(restaurantId, dishId, next);
+        if (result.error) setError(result.error);
+      } catch {
+        setError(GENERIC_ERROR);
+      }
     });
   }
 
@@ -48,7 +53,10 @@ export function UnavailableSwitch({
         }
       >
         <span aria-hidden="true" className={`size-3 rounded-full ${optimistic ? 'bg-peach' : 'bg-ink/25'}`} />
-        {optimistic ? 'Agotado' : 'Disponible'}
+        Agotado
+        <span aria-hidden="true" className="font-medium">
+          {optimistic ? 'Sí' : 'No'}
+        </span>
       </button>
       {error && (
         <p role="alert" className="text-sm font-medium text-red-700">
