@@ -62,4 +62,12 @@ describe('mensajes de la carta', () => {
     expect(getMessages('ca').unavailable).toBe('Exhaurit');
     expect(QR_CARD_TEXT).toBe('Escanea para ver la carta · Scan to see the menu');
   });
+
+  it('el botón del mapa, el de la carta y el del menú del día dicen cosas distintas en los seis idiomas', () => {
+    for (const locale of LOCALES) {
+      const m = getMessages(locale);
+      expect(m.viewMap, locale).not.toBe(m.viewMenu);
+      expect(m.viewMenu, locale).not.toBe(m.viewDailyMenu);
+    }
+  });
 });

@@ -130,8 +130,6 @@ export function AllergenIcon({
   return (
     <svg
       viewBox="0 0 24 24"
-      aria-hidden="true"
-      focusable="false"
       fill="none"
       stroke="currentColor"
       strokeWidth={1.75}
@@ -139,6 +137,8 @@ export function AllergenIcon({
       strokeLinejoin="round"
       className={className}
       {...props}
+      aria-hidden="true"
+      focusable="false"
     >
       {ICONS[allergen]}
     </svg>
