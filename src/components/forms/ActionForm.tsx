@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, startTransition, useActionState, useContext, useEffect, useRef, type ComponentProps, type ReactNode } from 'react';
-import { Button } from '@/components/ui/Button';
+import { Button, type ButtonVariant } from '@/components/ui/Button';
 import { Field, inputClass } from '@/components/ui/Field';
 import { Notice } from '@/components/ui/Notice';
 import { SelectField } from '@/components/ui/SelectField';
@@ -28,6 +28,7 @@ export function ActionForm({
   submitLabel = 'Guardar',
   pendingLabel = 'Guardando…',
   submitDisabled = false,
+  submitVariant = 'primary',
   children,
 }: {
   action: FormAction;
@@ -37,6 +38,7 @@ export function ActionForm({
   submitLabel?: string;
   pendingLabel?: string;
   submitDisabled?: boolean;
+  submitVariant?: ButtonVariant;
   children: ReactNode;
 }) {
   const [state, dispatch, pending] = useActionState<FormState, FormData>(action, {});
@@ -67,7 +69,7 @@ export function ActionForm({
         </fieldset>
         {!readOnly && (
           <div>
-            <Button type="submit" disabled={pending || submitDisabled} aria-busy={pending}>
+            <Button type="submit" variant={submitVariant} disabled={pending || submitDisabled} aria-busy={pending}>
               {pending ? pendingLabel : submitLabel}
             </Button>
           </div>
