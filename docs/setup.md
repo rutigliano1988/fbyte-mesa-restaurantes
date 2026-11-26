@@ -6,10 +6,11 @@
    - Hito 1: `20261124000100_base.sql`, `20261124000200_invitations.sql`.
    - Hito 2: `20261125000100_local.sql`, `20261125000200_horario.sql`, `20261125000300_publicar.sql`.
    - **Aviso sobre `20261125000300_publicar.sql`:** devuelve a «En configuración» (`setup`) los restaurantes que estén «Activo» (`active`) sin un contrato de encargado del tratamiento aceptado; su Administrador tendrá que publicar de nuevo. Despliega esta migración **a la vez que el código de la aplicación de este hito**, no antes ni mucho después.
+   - Hito 3: `20261126000100_menu.sql`, `20261126000200_menu_funciones.sql`, `20261126000300_menu_fotos.sql`, `20261126000400_menu_publico.sql`. No tocan datos existentes: añaden las tablas del menú, sus funciones y la columna `restaurants.menu_unavailable_mode` (por defecto `strike`). `20261126000300_menu_fotos.sql` sustituye `public.can_manage_media` para que los Encargados gestionen las fotos de platos; si falla por permisos, ejecútala desde el SQL Editor.
 
    Después, revisa los avisos de seguridad y rendimiento con `get_advisors` (MCP de Supabase) o en Advisors del panel. Es normal que queden avisos 0028/0029 (funciones `SECURITY DEFINER` ejecutables):
-   - para `anon`: `get_invitation`, `get_public_restaurant` y `list_public_slugs` (la mini-web pública solo lee por ellas);
-   - para `authenticated`: las de permisos (`is_member`, `has_role`, `my_role`, `belongs_to`, `is_platform_admin`, `my_restaurants`) y las de negocio (`create_restaurant`, `create_invitation`, `accept_invitation`, `set_restaurant_status`, `log_admin_view`, `restaurant_team`, `change_slug`, `restaurant_missing_fields`, `publish_restaurant`).
+   - para `anon`: `get_invitation`, `get_public_restaurant`, `list_public_slugs`, `get_public_menu` y `list_public_menus` (la mini-web y la carta pública solo leen por ellas);
+   - para `authenticated`: las de permisos (`is_member`, `has_role`, `my_role`, `belongs_to`, `is_platform_admin`, `my_restaurants`) y las de negocio (`create_restaurant`, `create_invitation`, `accept_invitation`, `set_restaurant_status`, `log_admin_view`, `restaurant_team`, `change_slug`, `restaurant_missing_fields`, `publish_restaurant`, `set_dish_unavailable`, `set_menu_unavailable_mode`, `get_public_menu`, `list_public_menus`).
 
    Son intencionados: **no les quites los permisos**, porque las políticas RLS y la mini-web dependen de ellos. Cualquier otro aviso de seguridad sí hay que corregirlo.
    - Tras aplicar las migraciones, haz una prueba real de subida como Administrador: sube un logo y una foto de galería y comprueba que aparecen en Storage → `restaurant-media`.
@@ -17,6 +18,7 @@
    - Si al crear las políticas sobre `storage.objects` falla con «must be owner of table objects», ejecuta la parte de Storage de `20261125000100_local.sql` desde el SQL Editor de Supabase.
    - La extensión `btree_gist` se instala en el esquema `extensions` (la necesitan las restricciones que impiden solapar servicios y cierres).
    - El plan gratuito no transforma imágenes: el navegador las reduce y las pasa a WebP antes de subirlas. No hace falta activar *Image Transformations*.
+   - Desde el Hito 3, la carpeta `{restaurante}/dishes/` (fotos de platos) la pueden gestionar el Administrador y el Encargado; el resto del bucket, solo el Administrador. Haz una prueba real como Encargado: sube la foto de un plato y comprueba que aparece en `restaurant-media/<id>/dishes/`.
 4. Settings → API Keys: copia la *publishable key* y la *secret key* en `.env.local` (ver `.env.example`).
 5. Authentication → URL Configuration:
    - **Site URL**: la URL pública (en local `http://localhost:3000`).
@@ -76,6 +78,7 @@ Pruebas: `pnpm test` (unitarias y de BD; la BD de pruebas se levanta sola en el 
    - Settings → Functions: comprueba que la región de las funciones es **`fra1` (Fráncfort)**, por RGPD y por latencia con Supabase (`eu-central-1`).
 4. No hay variables nuevas en el Hito 2. Las server actions aceptan cuerpos de hasta 4 MB (`next.config.ts`), por debajo del límite de 4,5 MB de las funciones de Vercel; las fotos llegan ya comprimidas (máx. 2 MB).
 5. La mini-web vive en `/<slug>` y se cachea por restaurante; los cambios del panel se ven al momento. `sitemap.xml` y `robots.txt` usan `NEXT_PUBLIC_SITE_URL`: ponla con la URL de producción.
+6. No hay variables nuevas en el Hito 3. El PNG y el PDF del QR se generan en funciones de Node.js (`sharp` ya viene con Next.js). Los QR apuntan a `NEXT_PUBLIC_SITE_URL/<slug>/menu`: **antes de imprimir QR de verdad, comprueba que esa variable tiene la dirección definitiva** (si después cambias de dominio, los QR impresos dejarán de funcionar; si solo cambia el slug, siguen funcionando).
 
 ## 6. Revisión legal (antes de abrir a clientes)
 1. El contrato de encargado del tratamiento (`src/lib/legal/dpa.ts`, versión `2026-11-borrador`) y el aviso legal de la mini-web son plantillas marcadas «PENDIENTE DE REVISIÓN LEGAL»: tiene que revisarlas un abogado antes de publicar restaurantes reales.
