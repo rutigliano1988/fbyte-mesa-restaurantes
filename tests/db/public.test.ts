@@ -305,13 +305,19 @@ describe('get_public_restaurant', () => {
 });
 
 describe('privilegios del Hito 2', () => {
-  it('anon solo ejecuta get_invitation, get_public_restaurant y list_public_slugs', () =>
+  it('anon solo ejecuta get_invitation y las funciones públicas de la mini-web y la carta', () =>
     tx(async (c) => {
       const { rows } = await c.query(
         `select p.proname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
           where n.nspname = 'public' and has_function_privilege('anon', p.oid, 'execute') order by 1`,
       );
-      expect(rows.map((r) => r.proname)).toEqual(['get_invitation', 'get_public_restaurant', 'list_public_slugs']);
+      expect(rows.map((r) => r.proname)).toEqual([
+        'get_invitation',
+        'get_public_menu',
+        'get_public_restaurant',
+        'list_public_menus',
+        'list_public_slugs',
+      ]);
     }));
 
   it('anon no toca ninguna tabla nueva', () =>
