@@ -24,12 +24,13 @@ export function refreshRestaurant(_restaurantId: string, slug: string, allPublic
 /**
  * Esqueleto de las acciones del panel: comprueba permiso (no en modo soporte ni con el restaurante desactivado),
  * ejecuta fn con la sesión del usuario (RLS) y, si va bien, refresca.
+ * publicData: false → lo que cambia no sale en la web (reservas, mesas, ajustes): solo se refresca el panel.
  */
 export async function runPanelAction(
   restaurantId: string,
   permission: Permission,
   fn: (supabase: SupabaseServerClient, ctx: PanelContext) => Promise<FormState>,
-  opts: { allPublic?: boolean } = {},
+  opts: { allPublic?: boolean; publicData?: boolean } = {},
 ): Promise<FormState> {
   if (!uuidSchema.safeParse(restaurantId).success) return { error: mapDbError('FORBIDDEN') };
   try {
@@ -37,7 +38,8 @@ export async function runPanelAction(
     const supabase = await createClient();
     const result = await fn(supabase, ctx);
     if (!result.error && !result.fieldErrors) {
-      refreshRestaurant(restaurantId, ctx.restaurant.slug, opts.allPublic);
+      if (opts.publicData === false) revalidatePath('/panel/[restaurantId]', 'layout');
+      else refreshRestaurant(restaurantId, ctx.restaurant.slug, opts.allPublic);
     }
     return result;
   } catch (e) {

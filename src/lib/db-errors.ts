@@ -46,6 +46,26 @@ const RULES: [RegExp, string][] = [
   [/dish_prices_amount_check/, 'Revisa los precios: van de 0 a 99.999,99 € y «según mercado» no lleva importe.'],
   [/menus_(kind|time|dates|weekdays|price_cents)_check/, 'Revisa la programación del menú: días, horas y fechas.'],
   [/(dishes|menus|menu_sections)_names_check|menu_items_inline_names_check/, 'Falta el nombre en castellano o algún texto es demasiado largo.'],
+  // Hito 4A: reservas
+  [/SLOT_TAKEN|reservation_tables_no_overlap/, 'Vaya, esa mesa se acaba de ocupar a esa hora. Elige otra o guárdala sin mesa.'],
+  [/NO_TABLE_AVAILABLE/, 'No queda ninguna mesa libre para ese grupo a esa hora. Prueba otra hora, elige mesas a mano o guárdala sin mesa.'],
+  [/TABLE_TOO_SMALL/, 'En esas mesas no caben todos: añade otra mesa o elige una más grande.'],
+  [/TABLE_BLOCKED/, 'Esa mesa está bloqueada a esa hora.'],
+  [/TABLE_INACTIVE/, 'Esa mesa está desactivada. Elige otra.'],
+  [/INVALID_TRANSITION/, 'Ese cambio de estado ya no se puede hacer. Recarga para ver cómo está la reserva.'],
+  [/NOTHING_TO_UNDO/, 'No hay nada que deshacer en esta reserva.'],
+  [/RESERVATION_CLOSED/, 'Esta reserva ya está cerrada: no se puede cambiar.'],
+  [/ZONE_LIMIT/, 'Ya tienes 20 zonas. Borra alguna para crear otra.'],
+  [/TABLE_LIMIT/, 'Ya tienes 100 mesas. Borra las que no uses para crear otras.'],
+  [/TABLE_HAS_RESERVATIONS/, 'Esta mesa tiene reservas por delante. Desactívala en lugar de borrarla.'],
+  [/update or delete on table "zones"/, 'Esta zona tiene mesas. Pásalas a otra zona o bórralas antes.'],
+  [/tables_name_key/, 'Ya tienes una mesa con ese nombre.'],
+  [/zones_name_key/, 'Ya tienes una zona con ese nombre.'],
+  [/tables_capacity_check/, 'El mínimo de personas no puede ser mayor que el máximo.'],
+  [/services_last_booking_check/, 'La última reserva tiene que caer dentro del servicio.'],
+  [/booking_settings_duration_rules_check/, 'Revisa los tramos de duración: no pueden solaparse.'],
+  [/customers_phone_check/, 'Ese teléfono no parece correcto.'],
+  [/customers_email_check/, 'Ese email no parece correcto.'],
 ];
 
 export function mapDbError(message: string | null | undefined): string {

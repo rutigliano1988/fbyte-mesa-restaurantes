@@ -10,11 +10,12 @@ export type OnboardingInput = {
   logoPath: string | null;
   coverPath: string | null;
   servicesCount: number;
+  tablesCount: number;
   enabledLocales: string[];
   descriptionLocales: string[];
 };
 
-export type OnboardingStepKey = 'basics' | 'images' | 'schedule' | 'languages' | 'publish';
+export type OnboardingStepKey = 'basics' | 'images' | 'schedule' | 'tables' | 'languages' | 'publish';
 export type OnboardingStep = { key: OnboardingStepKey; title: string; hint: string; href: string; done: boolean };
 
 /** Asistente de bienvenida: cada paso se marca solo, a partir de los datos guardados. */
@@ -41,6 +42,13 @@ export function onboardingSteps(restaurantId: string, i: OnboardingInput): Onboa
       hint: 'Tus servicios de cada día y los cierres.',
       href: `${base}/horario`,
       done: i.servicesCount > 0,
+    },
+    {
+      key: 'tables',
+      title: 'Mesas',
+      hint: 'Crea tus mesas para llevar las reservas desde el panel. No hace falta para publicar.',
+      href: `${base}/reservas/ajustes#mesas`,
+      done: i.tablesCount > 0,
     },
     {
       key: 'languages',

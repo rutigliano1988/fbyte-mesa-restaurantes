@@ -12,16 +12,18 @@ const empty: OnboardingInput = {
   logoPath: null,
   coverPath: null,
   servicesCount: 0,
+  tablesCount: 0,
   enabledLocales: ['es'],
   descriptionLocales: [],
 };
 
 describe('onboardingSteps', () => {
-  it('cinco pasos en orden, ninguno hecho al empezar', () => {
+  it('seis pasos en orden, ninguno hecho al empezar', () => {
     const steps = onboardingSteps(id, empty);
-    expect(steps.map((s) => s.title)).toEqual(['Datos básicos', 'Logo y portada', 'Horario', 'Idiomas', 'Publicar']);
+    expect(steps.map((s) => s.title)).toEqual(['Datos básicos', 'Logo y portada', 'Horario', 'Mesas', 'Idiomas', 'Publicar']);
     expect(steps.every((s) => !s.done)).toBe(true);
     expect(steps[2].href).toBe(`/panel/${id}/horario`);
+    expect(steps[3].href).toBe(`/panel/${id}/reservas/ajustes#mesas`);
   });
 
   it('se marcan solos con los datos guardados', () => {
@@ -34,11 +36,18 @@ describe('onboardingSteps', () => {
       logoPath: 'x',
       coverPath: 'y',
       servicesCount: 2,
+      tablesCount: 6,
       enabledLocales: ['es', 'en'],
       descriptionLocales: ['es', 'en'],
       status: 'active',
     });
     expect(steps.every((s) => s.done)).toBe(true);
+  });
+
+  it('Mesas se marca con la primera mesa y no hace falta para publicar', () => {
+    const steps = onboardingSteps(id, { ...empty, tablesCount: 1 });
+    expect(steps.find((s) => s.key === 'tables')?.done).toBe(true);
+    expect(onboardingSteps(id, { ...empty, status: 'active' }).find((s) => s.key === 'publish')?.done).toBe(true);
   });
 
   it('Idiomas no está hecho si falta la descripción de algún idioma activo', () => {

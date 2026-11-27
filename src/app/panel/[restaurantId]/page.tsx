@@ -8,6 +8,7 @@ import { siteUrl } from '@/lib/env';
 import { getMissingFields, getRestaurantLocal, getRestaurantSchedule } from '@/lib/local/data';
 import { missingFieldLinks, onboardingSteps, type MissingFieldLink } from '@/lib/onboarding';
 import { can, ROLE_LABELS } from '@/lib/permissions';
+import { countTables } from '@/lib/reservations/data';
 
 export default async function PanelHome({ params }: { params: Promise<{ restaurantId: string }> }) {
   const { restaurantId } = await params;
@@ -17,10 +18,11 @@ export default async function PanelHome({ params }: { params: Promise<{ restaura
 
   let setup: { steps: ReturnType<typeof onboardingSteps>; missing: MissingFieldLink[] } | null = null;
   if (status === 'setup' && canEdit) {
-    const [{ profile, descriptions }, { services }, missing] = await Promise.all([
+    const [{ profile, descriptions }, { services }, missing, tablesCount] = await Promise.all([
       getRestaurantLocal(restaurantId),
       getRestaurantSchedule(restaurantId),
       getMissingFields(restaurantId),
+      countTables(restaurantId),
     ]);
     setup = {
       steps: onboardingSteps(restaurantId, {
@@ -33,6 +35,7 @@ export default async function PanelHome({ params }: { params: Promise<{ restaura
         logoPath: profile.logoPath,
         coverPath: profile.coverPath,
         servicesCount: services.length,
+        tablesCount,
         enabledLocales: profile.enabledLocales,
         descriptionLocales: Object.keys(descriptions),
       }),
@@ -74,7 +77,11 @@ export default async function PanelHome({ params }: { params: Promise<{ restaura
 
       <Card>
         <p>
-          Entras como <strong>{ROLE_LABELS[ctx.role]}</strong>. Pronto verás aquí las reservas de hoy y lo más importante del día.
+          Entras como <strong>{ROLE_LABELS[ctx.role]}</strong>.{' '}
+          <Link href={`/panel/${restaurantId}/reservas`} className="font-bold text-navy hover:underline">
+            Ver las reservas de hoy
+          </Link>
+          .
         </p>
       </Card>
     </div>
