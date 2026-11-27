@@ -225,3 +225,82 @@ export async function insertItem(
   );
   return rows[0].id;
 }
+
+export type ReservationStatus =
+  | 'pending'
+  | 'confirmed'
+  | 'seated'
+  | 'completed'
+  | 'cancelled_customer'
+  | 'cancelled_restaurant'
+  | 'rejected'
+  | 'no_show';
+
+export async function insertZone(c: pg.PoolClient, restaurantId: string, name = 'Sala', position = 0): Promise<string> {
+  await asSuperuser(c);
+  const { rows } = await c.query<{ id: string }>(
+    'insert into public.zones (restaurant_id, name, position) values ($1, $2, $3) returning id',
+    [restaurantId, name, position],
+  );
+  return rows[0].id;
+}
+
+/** Mesa de una zona: por defecto «T1», de 2 a 4 personas, activa y reservable online. */
+export async function insertTable(
+  c: pg.PoolClient,
+  restaurantId: string,
+  zoneId: string,
+  t: { name?: string; min?: number; max?: number; active?: boolean; onlineBookable?: boolean; position?: number } = {},
+): Promise<string> {
+  await asSuperuser(c);
+  const { rows } = await c.query<{ id: string }>(
+    `insert into public.tables (restaurant_id, zone_id, name, min_capacity, max_capacity, active, online_bookable, position)
+     values ($1, $2, $3, $4, $5, $6, $7, $8) returning id`,
+    [restaurantId, zoneId, t.name ?? 'T1', t.min ?? 2, t.max ?? 4, t.active ?? true, t.onlineBookable ?? true, t.position ?? 0],
+  );
+  return rows[0].id;
+}
+
+export async function insertCustomer(
+  c: pg.PoolClient,
+  restaurantId: string,
+  cu: { name?: string; phone?: string | null; email?: string | null } = {},
+): Promise<string> {
+  await asSuperuser(c);
+  const { rows } = await c.query<{ id: string }>(
+    'insert into public.customers (restaurant_id, name, phone, email) values ($1, $2, $3, $4) returning id',
+    [restaurantId, cu.name ?? 'Ana García', cu.phone === undefined ? '+34612345678' : cu.phone, cu.email ?? null],
+  );
+  return rows[0].id;
+}
+
+/** Reserva insertada a mano (sin las funciones del panel), con sus mesas. Por defecto, confirmada, de 90 minutos y para 2. */
+export async function insertReservation(
+  c: pg.PoolClient,
+  restaurantId: string,
+  r: {
+    startsAt: string;
+    minutes?: number;
+    partySize?: number;
+    status?: ReservationStatus;
+    source?: 'online' | 'phone' | 'walk_in';
+    customerId?: string | null;
+    tableIds?: string[];
+  },
+): Promise<string> {
+  await asSuperuser(c);
+  const customerId = r.customerId === undefined ? await insertCustomer(c, restaurantId, { phone: null }) : r.customerId;
+  const { rows } = await c.query<{ id: string }>(
+    `insert into public.reservations (restaurant_id, customer_id, party_size, starts_at, ends_at, status, source)
+     values ($1, $2, $3, $4::timestamptz, $4::timestamptz + make_interval(mins => $5), $6, $7) returning id`,
+    [restaurantId, customerId, r.partySize ?? 2, r.startsAt, r.minutes ?? 90, r.status ?? 'confirmed', r.source ?? 'phone'],
+  );
+  for (const tableId of r.tableIds ?? []) {
+    await c.query('insert into public.reservation_tables (reservation_id, table_id, restaurant_id) values ($1, $2, $3)', [
+      rows[0].id,
+      tableId,
+      restaurantId,
+    ]);
+  }
+  return rows[0].id;
+}
