@@ -5,14 +5,13 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import { ActionForm, FormField, FormSelect, FormTextArea, useActionForm } from '@/components/forms/ActionForm';
 import { CustomerWarnings } from '@/components/reservations/CustomerWarnings';
 import { TableCheckboxes } from '@/components/reservations/TableCheckboxes';
-import { Notice } from '@/components/ui/Notice';
 import { createPhoneReservation, lookupCustomer, updateReservation, type CustomerLookup } from '@/lib/actions/reservations';
-import { GENERIC_ERROR } from '@/lib/menu/sortable';
 import { freeTables, getAvailableSlots, proposeTable, type BlockSpan, type BookingTable, type Occupancy } from '@/lib/reservations/availability';
 import type { CustomerWarning } from '@/lib/reservations/customers';
-import { resolveMinute, type DayService } from '@/lib/reservations/day';
+import { keepsStart, resolveMinute, type DayService } from '@/lib/reservations/day';
+import { lookupNotice, submitLabel, syncedDate } from '@/lib/reservations/form';
 import { DURATION_OPTIONS, durationFor, formatDuration, type BookingSettings } from '@/lib/reservations/settings';
-import { zonedTimeToUtc } from '@/lib/reservations/time';
+import { serviceDayMinute, zonedTimeToUtc } from '@/lib/reservations/time';
 import type { TableMode } from '@/lib/reservations/validation';
 import { minutesToTime, timeToMinutes } from '@/lib/schedule';
 
@@ -24,6 +23,8 @@ export type ReservationFormInitial = {
   tableIds: string[];
   notes: string;
   internalNotes: string;
+  /** Al cambiar una reserva: su día de servicio y su instante (mientras no cambien fecha ni hora, se usa este). */
+  start?: { date: string; ms: number };
 };
 
 type Props = {
@@ -64,6 +65,12 @@ export function ReservationForm(props: Props) {
   const { mode, restaurantId, timeZone, services, tables, occupancy, blocks, settings, initial } = props;
   const router = useRouter();
   const [date, setDate] = useState(props.date);
+  // Si la página trae otra fecha (atrás, un enlace), el formulario la sigue.
+  const [seenDate, setSeenDate] = useState(props.date);
+  if (props.date !== seenDate) {
+    setSeenDate(props.date);
+    setDate(syncedDate(date, seenDate, props.date));
+  }
   const [time, setTime] = useState(initial.time);
   const [party, setParty] = useState(String(initial.partySize));
   const [duration, setDuration] = useState(initial.durationMin === null ? '' : String(initial.durationMin));
@@ -84,8 +91,11 @@ export function ReservationForm(props: Props) {
   const ignore = props.reservationId;
   let proposal: BookingTable | null = null;
   let free: BookingTable[] = [];
-  if (ready) {
-    const startMs = zonedTimeToUtc(date, resolveMinute(rawMinute, services), timeZone);
+  // Sin cambiar fecha ni hora, el instante real de la reserva (como en el servidor); si no, el de la hora escrita.
+  const keptMs = rawMinute !== null && initial.start && keepsStart(initial.start.ms, initial.start.date, date, rawMinute, timeZone) ? initial.start.ms : null;
+  const minute = rawMinute === null ? null : keptMs !== null ? (serviceDayMinute(keptMs, date, timeZone) ?? rawMinute) : resolveMinute(rawMinute, services);
+  if (ready && minute !== null) {
+    const startMs = keptMs ?? zonedTimeToUtc(date, minute, timeZone);
     const endMs = startMs + durationMin * 60_000;
     proposal = proposeTable(tables, partySize, startMs, endMs, occupancy, blocks, { ignoreReservationId: ignore });
     free = freeTables(tables, startMs, endMs, occupancy, blocks, ignore);
@@ -129,15 +139,10 @@ export function ReservationForm(props: Props) {
       }
       if (seq !== lookupSeq.current) return;
       // Si falla, no se rellena nada y se puede volver a buscar; la reserva se guarda igual.
-      if (!result || result.error) {
-        lookedUp.current = '';
-        setLookup({ text: result?.error ?? GENERIC_ERROR, warnings: [] });
-      } else if (!result.customer) setLookup({ text: 'Cliente nuevo: se guardará su ficha con esta reserva.', warnings: [] });
-      else {
-        const found = result.customer;
-        setName((current) => (current.trim() === '' ? found.name : current));
-        setLookup({ text: `Cliente encontrado: ${found.name}.`, warnings: found.warnings });
-      }
+      if (!result || result.error) lookedUp.current = '';
+      const found = result?.customer;
+      if (found) setName((current) => (current.trim() === '' ? found.name : current));
+      setLookup(lookupNotice(result));
     });
   }
 
@@ -152,13 +157,13 @@ export function ReservationForm(props: Props) {
     <ActionForm
       action={mode === 'create' ? createPhoneReservation : updateReservation}
       hidden={{ restaurantId, ...(props.reservationId ? { reservationId: props.reservationId } : {}) }}
-      submitLabel={mode === 'edit' ? 'Guardar cambios' : noRoom || tableMode === 'none' ? 'Guardar sin mesa' : 'Guardar reserva'}
+      submitLabel={submitLabel(mode, noRoom, tableMode)}
     >
       <RefreshOnError />
       <div className="grid gap-4 sm:grid-cols-3">
         <FormField label="Personas" name="partySize" type="number" inputMode="numeric" min={1} max={50} value={party} onChange={(e) => setParty(e.target.value)} required />
         <FormField label="Fecha" name="date" type="date" value={date} onChange={(e) => changeDate(e.target.value)} required />
-        <FormField label="Hora" name="time" type="time" step={300} value={time} onChange={(e) => setTime(e.target.value)} required />
+        <FormField label="Hora" name="time" type="time" value={time} onChange={(e) => setTime(e.target.value)} required />
       </div>
 
       <p className="text-sm text-muted empty:hidden" role="status">
@@ -178,7 +183,7 @@ export function ReservationForm(props: Props) {
                 <ul className="flex flex-wrap gap-1.5">
                   {own.map((x) => {
                     const label = minutesToTime(x.minute);
-                    const selected = rawMinute !== null && resolveMinute(rawMinute, services) === x.minute;
+                    const selected = minute === x.minute;
                     return (
                       <li key={x.minute}>
                         <button
@@ -222,12 +227,15 @@ export function ReservationForm(props: Props) {
         <input type="hidden" name="tableMode" value={sentMode} />
         {tableMode === 'keep' && initial.tableIds.map((id) => <input key={id} type="hidden" name="tableIds" value={id} />)}
       </fieldset>
-      {noRoom && (
-        <Notice tone="info">
-          No hay hueco: ninguna mesa libre para {partySize} a las {time}. Puedes elegir mesas a mano, cambiar la hora o guardarla sin mesa (saldrá en «Sin mesa
-          asignada»).
-        </Notice>
-      )}
+      {/* Región siempre montada: el aviso se anuncia al aparecer. */}
+      <div role="status" className="empty:hidden">
+        {noRoom && (
+          <p className="rounded-[6px] border-2 border-ink bg-peach-soft px-4 py-3 text-sm font-medium text-ink">
+            No hay hueco: ninguna mesa libre para {partySize} a las {time}. Puedes elegir mesas a mano, cambiar la hora o guardarla sin mesa (saldrá en «Sin mesa
+            asignada»).
+          </p>
+        )}
+      </div>
       {tableMode === 'manual' && <ManualTables free={free} all={tables} selected={tableIds} onChange={setTableIds} partySize={partySize} />}
 
       {mode === 'create' && (

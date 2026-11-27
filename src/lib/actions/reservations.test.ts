@@ -10,12 +10,18 @@ const T1 = '33333333-3333-4333-8333-333333333333';
 const rpc = vi.fn<(fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>>(
   async () => ({ data: { id: ID, table_ids: [T1] }, error: null }),
 );
+// Lectura del inicio actual de la reserva (updateReservation): por defecto, no la encuentra.
+const current = vi.fn<() => Promise<{ data: { starts_at: string } | null; error: { message: string } | null }>>(async () => ({ data: null, error: null }));
+const reservationsChain = { select: vi.fn(), eq: vi.fn(), maybeSingle: () => current() };
+reservationsChain.select.mockReturnValue(reservationsChain);
+reservationsChain.eq.mockReturnValue(reservationsChain);
+const fromDb = vi.fn(() => reservationsChain);
 const redirect = vi.fn();
 vi.mock('next/navigation', () => ({ redirect: (url: string) => redirect(url), unstable_rethrow: vi.fn() }));
 vi.mock('@/lib/auth/guards', () => ({ requirePermission: vi.fn() }));
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }));
 vi.mock('./run', () => ({
-  runPanelAction: vi.fn(async (_r: string, _p: string, fn: (supabase: unknown) => unknown) => fn({ rpc })),
+  runPanelAction: vi.fn(async (_r: string, _p: string, fn: (supabase: unknown) => unknown) => fn({ rpc, from: fromDb })),
 }));
 const config: BookingConfig = {
   timezone: 'Europe/Madrid',
@@ -26,6 +32,7 @@ const config: BookingConfig = {
   exceptions: [],
 };
 vi.mock('@/lib/reservations/data', () => ({ loadBookingConfig: vi.fn(async () => config) }));
+const { loadBookingConfig } = await import('@/lib/reservations/data');
 
 const { requirePermission } = await import('@/lib/auth/guards');
 const { createClient } = await import('@/lib/supabase/server');
@@ -54,6 +61,9 @@ const phoneForm = {
 
 beforeEach(() => {
   rpc.mockClear();
+  current.mockClear();
+  fromDb.mockClear();
+  reservationsChain.eq.mockClear();
   redirect.mockClear();
   vi.mocked(runPanelAction).mockClear();
   vi.mocked(requirePermission).mockClear();
@@ -116,6 +126,44 @@ it('updateReservation: duración vacía = la del tramo; «dejar las mesas» mand
   await updateReservation({}, form({ ...phoneForm, reservationId: ID, tableMode: 'keep', tableIds: [T1] }));
   expect(rpc).toHaveBeenCalledWith('update_panel_reservation', expect.objectContaining({ p_reservation_id: ID, p_duration_min: 60, p_table_ids: [T1], p_force: false }));
   expect(redirect).toHaveBeenCalledWith(`/panel/${R}/reservas/${ID}?aviso=guardada`);
+});
+
+describe('updateReservation: el inicio', () => {
+  // Viernes cena 20:00–23:30; sábado cena 20:00–01:30.
+  const lateConfig: BookingConfig = {
+    ...config,
+    services: [
+      { name: 'Cena', weekday: 5, startMinute: 1200, endMinute: 1410, lastBookingMinute: null, slotIntervalMin: 15 },
+      { name: 'Cena', weekday: 6, startMinute: 1200, endMinute: 1530, lastBookingMinute: null, slotIntervalMin: 15 },
+    ],
+  };
+  const edit = { ...phoneForm, reservationId: ID, tableMode: 'keep', tableIds: [T1], date: '2030-06-15', time: '00:30', notes: 'Trona' };
+
+  it('guardar solo notas no mueve 24 h una reserva del sábado a las 00:30: lee su inicio filtrando por id y restaurante', async () => {
+    vi.mocked(loadBookingConfig).mockResolvedValueOnce(lateConfig);
+    current.mockResolvedValueOnce({ data: { starts_at: '2030-06-14T22:30:00+00:00' }, error: null });
+    await updateReservation({}, form(edit));
+    expect(fromDb).toHaveBeenCalledWith('reservations');
+    expect(reservationsChain.eq).toHaveBeenCalledWith('id', ID);
+    expect(reservationsChain.eq).toHaveBeenCalledWith('restaurant_id', R);
+    expect(rpc.mock.calls[0][1]).toMatchObject({ p_starts_at: '2030-06-14T22:30:00.000Z', p_notes: 'Trona' });
+  });
+
+  it('un cambio real de hora se calcula como siempre', async () => {
+    vi.mocked(loadBookingConfig).mockResolvedValueOnce(lateConfig);
+    current.mockResolvedValueOnce({ data: { starts_at: '2030-06-15T19:00:00+00:00' }, error: null });
+    await updateReservation({}, form({ ...edit, time: '21:30' }));
+    expect(rpc.mock.calls[0][1]).toMatchObject({ p_starts_at: '2030-06-15T19:30:00.000Z' });
+  });
+
+  it('si no se puede leer la reserva, no se guarda y no se enseña el mensaje de la BD', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    current.mockResolvedValueOnce({ data: null, error: { message: 'secreto interno' } });
+    expect(await updateReservation({}, form(edit))).toEqual({ error: mapDbError(undefined) });
+    expect(rpc).not.toHaveBeenCalled();
+    expect(log).toHaveBeenCalledTimes(1);
+    log.mockRestore();
+  });
 });
 
 describe('estados', () => {
@@ -206,8 +254,8 @@ describe('lookupCustomer', () => {
     expect(result.error).toBeUndefined();
   });
 
-  it('un teléfono que no se puede normalizar devuelve null sin consultar', async () => {
-    expect(await lookupCustomer(R, '12')).toEqual({ customer: null });
+  it('un teléfono que no se puede normalizar lo indica (invalid) sin consultar', async () => {
+    expect(await lookupCustomer(R, '12')).toEqual({ customer: null, invalid: true });
     expect(from).not.toHaveBeenCalled();
     expect(requirePermission).not.toHaveBeenCalled();
   });

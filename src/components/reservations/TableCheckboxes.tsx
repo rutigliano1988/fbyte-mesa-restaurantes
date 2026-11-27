@@ -32,8 +32,9 @@ export function TableCheckboxes({
   const capacity = capacityOf(chosen);
   const errId = `f-${name}-err`;
   const sumId = `f-${name}-sum`;
+  // aria-invalid y tabIndex: ActionForm lleva aquí el foco si falta elegir mesa.
   return (
-    <fieldset className="flex flex-col gap-2" aria-describedby={error ? `${errId} ${sumId}` : sumId}>
+    <fieldset className="flex flex-col gap-2" aria-invalid={!!error} tabIndex={-1} aria-describedby={error ? `${errId} ${sumId}` : sumId}>
       <legend className="mb-1 text-sm font-bold">{legend}</legend>
       {options.length === 0 ? (
         <p className="text-sm text-muted">No hay ninguna mesa libre a esa hora.</p>

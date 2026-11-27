@@ -1,6 +1,6 @@
 import { MINUTES_PER_DAY } from '@/lib/schedule';
 import { COUNTED_STATUSES, type ReservationStatus } from './codes';
-import { addDays, localParts, serviceDayMinute, weekdayOf } from './time';
+import { addDays, localParts, serviceDayMinute, weekdayOf, zonedTimeToUtc } from './time';
 
 /** Servicio de la semana tal como se guarda (Hito 2 + los dos campos del Hito 4A). */
 export type ServiceConfig = {
@@ -130,4 +130,28 @@ export function serviceDateOf(
   const { date, minute } = localParts(startMs, timeZone);
   const yesterday = addDays(date, -1);
   return serviceAt(minute + MINUTES_PER_DAY, servicesForDate(yesterday, services, exceptions)) ? yesterday : date;
+}
+
+type StartConfig = { timezone: string; services: readonly ServiceConfig[]; exceptions: readonly ExceptionConfig[] };
+
+/** Fecha y hora del formulario → instante (la madrugada de una cena que pasa de medianoche es de esa noche). */
+export function startFor(config: StartConfig, date: string, minute: number): number {
+  return zonedTimeToUtc(date, resolveMinute(minute, servicesForDate(date, config.services, config.exceptions)), config.timezone);
+}
+
+/** ¿La fecha (día de servicio) y la hora (HH:MM local) del formulario son las del instante actual de la reserva? */
+export function keepsStart(currentMs: number, currentDate: string, date: string, minute: number, timeZone: string): boolean {
+  return currentDate === date && localParts(currentMs, timeZone).minute === minute;
+}
+
+/**
+ * Inicio al cambiar una reserva: si no cambian ni la fecha ni la hora, el instante que ya tiene (una reserva de
+ * madrugada que no es de la cena de la víspera no se mueve 24 h, y un walk-in conserva su minuto); si cambian, el
+ * cálculo de siempre.
+ */
+export function startForEdit(config: StartConfig, currentMs: number | null, date: string, minute: number): number {
+  if (currentMs !== null && keepsStart(currentMs, serviceDateOf(currentMs, config.timezone, config.services, config.exceptions), date, minute, config.timezone)) {
+    return currentMs;
+  }
+  return startFor(config, date, minute);
 }

@@ -2,11 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   effectiveLastBooking,
   groupByService,
+  keepsStart,
   resolveMinute,
   serviceAt,
   serviceDateOf,
   servicesForDate,
   slotMinutes,
+  startFor,
+  startForEdit,
   summarize,
   type ServiceConfig,
 } from './day';
@@ -109,4 +112,40 @@ it('serviceDateOf: la madrugada de la cena de la víspera es de la víspera', ()
   expect(serviceDateOf(zonedTimeToUtc('2030-06-15', 10, TZ), TZ, services, [])).toBe('2030-06-14');
   expect(serviceDateOf(zonedTimeToUtc('2030-06-15', 200, TZ), TZ, services, [])).toBe('2030-06-15');
   expect(serviceDateOf(zonedTimeToUtc('2030-06-14', 800, TZ), TZ, services, [])).toBe('2030-06-14');
+});
+
+describe('inicio al cambiar una reserva', () => {
+  // Viernes 2030-06-14: cena 20:00–23:30. Sábado 2030-06-15: cena 20:00–01:30.
+  const late: ServiceConfig[] = [
+    { name: 'Cena', weekday: 5, startMinute: 1200, endMinute: 1410, lastBookingMinute: null, slotIntervalMin: 15 },
+    { name: 'Cena', weekday: 6, startMinute: 1200, endMinute: 1530, lastBookingMinute: null, slotIntervalMin: 15 },
+  ];
+  const config = { timezone: TZ, services: late, exceptions: [] };
+  const saturdayDawn = zonedTimeToUtc('2030-06-15', 30, TZ); // sábado 00:30 (walk-in o forzada): es del sábado
+
+  it('startFor: la madrugada que cae en la cena de ese día que pasa de medianoche es de esa noche', () => {
+    expect(startFor(config, '2030-06-15', 30)).toBe(zonedTimeToUtc('2030-06-16', 30, TZ));
+    expect(startFor(config, '2030-06-14', 1290)).toBe(zonedTimeToUtc('2030-06-14', 1290, TZ));
+  });
+
+  it('keepsStart: mismo día de servicio y misma hora local', () => {
+    expect(keepsStart(saturdayDawn, '2030-06-15', '2030-06-15', 30, TZ)).toBe(true);
+    expect(keepsStart(saturdayDawn, '2030-06-15', '2030-06-15', 45, TZ)).toBe(false);
+    expect(keepsStart(saturdayDawn, '2030-06-15', '2030-06-16', 30, TZ)).toBe(false);
+  });
+
+  it('startForEdit: si no cambian fecha ni hora (p. ej., solo notas), se queda en su instante, sin moverla 24 h', () => {
+    expect(startForEdit(config, saturdayDawn, '2030-06-15', 30)).toBe(saturdayDawn);
+    // Un walk-in a las 21:07:23 conserva hasta los segundos.
+    const walkIn = zonedTimeToUtc('2030-06-14', 1267, TZ) + 23_000;
+    expect(startForEdit(config, walkIn, '2030-06-14', 1267)).toBe(walkIn);
+  });
+
+  it('startForEdit: un cambio real de hora o de fecha (o sin instante actual) se calcula como siempre', () => {
+    const friday = zonedTimeToUtc('2030-06-14', 1260, TZ);
+    expect(startForEdit(config, friday, '2030-06-14', 1290)).toBe(zonedTimeToUtc('2030-06-14', 1290, TZ));
+    expect(startForEdit(config, friday, '2030-06-15', 1260)).toBe(zonedTimeToUtc('2030-06-15', 1260, TZ));
+    expect(startForEdit(config, saturdayDawn, '2030-06-15', 45)).toBe(zonedTimeToUtc('2030-06-16', 45, TZ));
+    expect(startForEdit(config, null, '2030-06-15', 30)).toBe(zonedTimeToUtc('2030-06-16', 30, TZ));
+  });
 });

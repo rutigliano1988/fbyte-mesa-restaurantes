@@ -6,11 +6,10 @@ import { dbError, mapDbError } from '@/lib/db-errors';
 import { fieldErrorsFrom, type FormState } from '@/lib/forms';
 import { STATUS_LABELS_ES } from '@/lib/reservations/codes';
 import { customerWarnings, type CustomerWarning } from '@/lib/reservations/customers';
-import { loadBookingConfig, type BookingConfig } from '@/lib/reservations/data';
-import { resolveMinute, servicesForDate } from '@/lib/reservations/day';
+import { loadBookingConfig } from '@/lib/reservations/data';
+import { startFor, startForEdit } from '@/lib/reservations/day';
 import { normalizePhoneE164 } from '@/lib/reservations/phone';
 import { durationFor } from '@/lib/reservations/settings';
-import { zonedTimeToUtc } from '@/lib/reservations/time';
 import { phoneReservationSchema, readReservationForm, reservationEditSchema, statusSchema, walkInSchema, type TableMode } from '@/lib/reservations/validation';
 import { createClient } from '@/lib/supabase/server';
 import { uuidSchema } from '@/lib/validation/schemas';
@@ -25,11 +24,6 @@ function field(fd: FormData, key: string): string {
   return typeof value === 'string' ? value : '';
 }
 
-/** Fecha y hora del formulario → instante (la madrugada de una cena que pasa de medianoche es de esa noche). */
-function startsAtFor(config: BookingConfig, date: string, minute: number): string {
-  const services = servicesForDate(date, config.services, config.exceptions);
-  return new Date(zonedTimeToUtc(date, resolveMinute(minute, services), config.timezone)).toISOString();
-}
 
 /** Modo de mesa del formulario → argumentos de la BD: la propuesta (null), las elegidas o forzar sin mesa. */
 function tableArgs(mode: TableMode, tableIds: string[]): { p_table_ids: string[] | null; p_force: boolean } {
@@ -57,7 +51,7 @@ export async function createPhoneReservation(_prev: FormState, fd: FormData): Pr
       const config = await loadBookingConfig(supabase, restaurantId);
       const { data, error } = await supabase.rpc('create_panel_reservation', {
         p_restaurant_id: restaurantId,
-        p_starts_at: startsAtFor(config, d.date, d.time),
+        p_starts_at: new Date(startFor(config, d.date, d.time)).toISOString(),
         p_duration_min: d.duration,
         p_party_size: d.partySize,
         ...tableArgs(d.tableMode, d.tableIds),
@@ -92,10 +86,15 @@ export async function updateReservation(_prev: FormState, fd: FormData): Promise
     'reservations.manage',
     async (supabase) => {
       const config = await loadBookingConfig(supabase, restaurantId);
+      // Sin cambiar fecha ni hora, se queda en el instante que ya tiene (no se fía del cliente: se lee de la BD).
+      const current = await supabase.from('reservations').select('starts_at').eq('id', reservationId).eq('restaurant_id', restaurantId).maybeSingle();
+      if (current.error) return { error: dbError('reservas.updateReservation', current.error) };
+      const currentMs = current.data ? Date.parse((current.data as { starts_at: string }).starts_at) : NaN;
+      const startsAt = startForEdit(config, Number.isFinite(currentMs) ? currentMs : null, d.date, d.time);
       const { error } = await supabase.rpc('update_panel_reservation', {
         p_restaurant_id: restaurantId,
         p_reservation_id: reservationId,
-        p_starts_at: startsAtFor(config, d.date, d.time),
+        p_starts_at: new Date(startsAt).toISOString(),
         p_duration_min: d.duration ?? durationFor(d.partySize, config.settings),
         p_party_size: d.partySize,
         ...tableArgs(d.tableMode, d.tableIds),
@@ -180,7 +179,8 @@ export async function undoReservationStatus(restaurantId: string, reservationId:
   );
 }
 
-export type CustomerLookup = { customer: { name: string; email: string | null; warnings: CustomerWarning[] } | null; error?: string };
+/** `invalid`: el teléfono no se puede normalizar (no se ha buscado). */
+export type CustomerLookup = { customer: { name: string; email: string | null; warnings: CustomerWarning[] } | null; error?: string; invalid?: boolean };
 
 type CustomerRow = {
   id: string;
@@ -196,7 +196,8 @@ type CustomerRow = {
 /** Busca al cliente por su teléfono (normalizado) para rellenar el nombre y enseñar sus avisos. */
 export async function lookupCustomer(restaurantId: string, phone: string): Promise<CustomerLookup> {
   const e164 = typeof phone === 'string' ? normalizePhoneE164(phone) : null;
-  if (!isUuid(restaurantId) || !e164) return { customer: null };
+  if (!isUuid(restaurantId)) return { customer: null };
+  if (!e164) return { customer: null, invalid: true };
   try {
     await requirePermission(restaurantId, 'reservations.manage');
     const supabase = await createClient();

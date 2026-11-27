@@ -48,7 +48,7 @@ export default async function NewReservationPage({
         <p className="mt-1 text-muted">
           Por teléfono o en persona. Te proponemos la mesa más pequeña que sirve.{' '}
           <Link href={`${base}?fecha=${date}`} className="font-bold text-navy hover:underline">
-            Volver al {formatDayEs(date)}
+            Volver al {formatDayEs(date).toLowerCase()}
           </Link>
         </p>
       </header>

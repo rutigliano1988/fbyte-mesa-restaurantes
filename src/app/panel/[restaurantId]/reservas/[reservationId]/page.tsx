@@ -110,6 +110,7 @@ export default async function ReservationPage({
               tableIds: r.tableIds,
               notes: r.notes ?? '',
               internalNotes: r.internalNotes ?? '',
+              start: { date: ownDate, ms: r.startMs },
             }}
           />
         </SectionCard>
