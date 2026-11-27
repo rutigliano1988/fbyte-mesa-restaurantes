@@ -68,7 +68,7 @@ export default async function GridPage({
             ))}
           </nav>
         )}
-        <RealtimeRefresh restaurantId={restaurantId} />
+        <RealtimeRefresh restaurantId={restaurantId} blockIds={day.blocks.map((b) => b.id)} />
         <p className="text-sm text-muted">
           {readOnly
             ? 'Toca una barra para abrir la reserva. Con el teclado: flechas para moverte e Intro para abrir.'

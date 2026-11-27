@@ -40,7 +40,7 @@ export default async function WalkInPage({ params }: { params: Promise<{ restaur
             Volver a hoy
           </Link>
         </p>
-        {!ctx.readOnly && <RealtimeRefresh restaurantId={restaurantId} />}
+        {!ctx.readOnly && <RealtimeRefresh restaurantId={restaurantId} blockIds={day?.blocks.map((b) => b.id) ?? []} />}
       </header>
       {ctx.readOnly ? (
         <Notice tone="info">En modo soporte no se pueden sentar walk-ins.</Notice>

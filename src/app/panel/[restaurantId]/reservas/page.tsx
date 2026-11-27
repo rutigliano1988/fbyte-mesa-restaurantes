@@ -85,7 +85,7 @@ export default async function ReservationsDayPage({
             </Link>
           </div>
         )}
-        <RealtimeRefresh restaurantId={restaurantId} />
+        <RealtimeRefresh restaurantId={restaurantId} blockIds={dayBlocks.map((b) => b.id)} />
       </header>
 
       {notice && <Notice tone="success">{notice}</Notice>}

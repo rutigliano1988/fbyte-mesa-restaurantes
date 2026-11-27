@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { ActionForm, FormCheckbox, FormField, FormSelect } from '@/components/forms/ActionForm';
 import { DayPicker } from '@/components/reservations/DayPicker';
+import { RealtimeRefresh } from '@/components/reservations/RealtimeRefresh';
 import { ReservationsNav } from '@/components/reservations/ReservationsNav';
 import { SectionCard } from '@/components/ui/SectionCard';
 import { createBlock, deleteBlock } from '@/lib/actions/blocks';
@@ -44,6 +45,7 @@ export default async function BlocksPage({
         <h1 className="text-3xl font-extrabold tracking-tight">Bloqueos</h1>
         <DayPicker path={`/panel/${restaurantId}/reservas/bloqueos`} date={date} today={today} />
         <p className="text-muted">Una mesa (o todo el restaurante) que no se puede reservar durante un rato: una avería, un evento privado…</p>
+        <RealtimeRefresh restaurantId={restaurantId} blockIds={blocks.map((b) => b.id)} />
       </header>
 
       <SectionCard title={`Bloqueos del ${formatDayEs(date)}`}>
