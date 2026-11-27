@@ -145,7 +145,8 @@ const es: PublicMessages = {
   unavailable: 'Agotado',
   filterTitle: 'Filtrar por alérgenos',
   filterIntro: 'Marca lo que no puedes tomar y ocultamos los platos que lo llevan.',
-  filterHidden: (n) => (n === 1 ? 'Hay 1 plato oculto por tu filtro.' : `Hay ${n} platos ocultos por tu filtro.`),
+  filterHidden: (n) =>
+    n === 0 ? 'Ningún plato queda oculto por tu filtro.' : n === 1 ? 'Hay 1 plato oculto por tu filtro.' : `Hay ${n} platos ocultos por tu filtro.`,
   filterClear: 'Quitar el filtro',
   filterAllHidden: 'Ningún plato de esta carta encaja con tu filtro.',
   dishPhotoAlt: (dish) => `Foto de ${dish}`,
@@ -230,7 +231,8 @@ const en: PublicMessages = {
   unavailable: 'Sold out',
   filterTitle: 'Filter by allergens',
   filterIntro: 'Tick what you can’t eat and we’ll hide the dishes that contain it.',
-  filterHidden: (n) => (n === 1 ? '1 dish hidden by your filter.' : `${n} dishes hidden by your filter.`),
+  filterHidden: (n) =>
+    n === 0 ? 'No dishes are hidden by your filter.' : n === 1 ? '1 dish hidden by your filter.' : `${n} dishes hidden by your filter.`,
   filterClear: 'Clear filter',
   filterAllHidden: 'No dish on this menu matches your filter.',
   dishPhotoAlt: (dish) => `Photo of ${dish}`,
@@ -315,7 +317,8 @@ const ca: PublicMessages = {
   unavailable: 'Exhaurit',
   filterTitle: 'Filtra per al·lèrgens',
   filterIntro: 'Marca el que no pots prendre i amagarem els plats que ho porten.',
-  filterHidden: (n) => (n === 1 ? 'Hi ha 1 plat amagat pel teu filtre.' : `Hi ha ${n} plats amagats pel teu filtre.`),
+  filterHidden: (n) =>
+    n === 0 ? 'Cap plat no queda amagat pel teu filtre.' : n === 1 ? 'Hi ha 1 plat amagat pel teu filtre.' : `Hi ha ${n} plats amagats pel teu filtre.`,
   filterClear: 'Treu el filtre',
   filterAllHidden: 'Cap plat d’aquesta carta encaixa amb el teu filtre.',
   dishPhotoAlt: (dish) => `Foto de ${dish}`,
@@ -400,7 +403,8 @@ const fr: PublicMessages = {
   unavailable: 'Épuisé',
   filterTitle: 'Filtrer par allergènes',
   filterIntro: 'Cochez ce que vous ne pouvez pas manger et nous masquerons les plats qui en contiennent.',
-  filterHidden: (n) => (n === 1 ? '1 plat masqué par votre filtre.' : `${n} plats masqués par votre filtre.`),
+  filterHidden: (n) =>
+    n === 0 ? 'Aucun plat n’est masqué par votre filtre.' : n === 1 ? '1 plat masqué par votre filtre.' : `${n} plats masqués par votre filtre.`,
   filterClear: 'Retirer le filtre',
   filterAllHidden: 'Aucun plat de cette carte ne correspond à votre filtre.',
   dishPhotoAlt: (dish) => `Photo de ${dish}`,
@@ -485,7 +489,12 @@ const de: PublicMessages = {
   unavailable: 'Ausverkauft',
   filterTitle: 'Nach Allergenen filtern',
   filterIntro: 'Kreuzen Sie an, was Sie nicht essen dürfen, und wir blenden die Gerichte aus, die es enthalten.',
-  filterHidden: (n) => (n === 1 ? '1 Gericht durch Ihren Filter ausgeblendet.' : `${n} Gerichte durch Ihren Filter ausgeblendet.`),
+  filterHidden: (n) =>
+    n === 0
+      ? 'Ihr Filter blendet kein Gericht aus.'
+      : n === 1
+        ? '1 Gericht durch Ihren Filter ausgeblendet.'
+        : `${n} Gerichte durch Ihren Filter ausgeblendet.`,
   filterClear: 'Filter entfernen',
   filterAllHidden: 'Kein Gericht dieser Speisekarte passt zu Ihrem Filter.',
   dishPhotoAlt: (dish) => `Foto von ${dish}`,
@@ -570,7 +579,8 @@ const it: PublicMessages = {
   unavailable: 'Esaurito',
   filterTitle: 'Filtra per allergeni',
   filterIntro: 'Seleziona ciò che non puoi mangiare e nasconderemo i piatti che lo contengono.',
-  filterHidden: (n) => (n === 1 ? '1 piatto nascosto dal tuo filtro.' : `${n} piatti nascosti dal tuo filtro.`),
+  filterHidden: (n) =>
+    n === 0 ? 'Nessun piatto è nascosto dal tuo filtro.' : n === 1 ? '1 piatto nascosto dal tuo filtro.' : `${n} piatti nascosti dal tuo filtro.`,
   filterClear: 'Togli il filtro',
   filterAllHidden: 'Nessun piatto di questo menu corrisponde al tuo filtro.',
   dishPhotoAlt: (dish) => `Foto di ${dish}`,

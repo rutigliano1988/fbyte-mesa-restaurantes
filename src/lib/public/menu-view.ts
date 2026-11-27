@@ -32,7 +32,8 @@ export type MenuView = {
 
 /**
  * Textos en el idioma (o en castellano si falta), precios con formato y agotados ocultos o marcados según el
- * ajuste del restaurante. Las secciones que se quedan sin platos no salen.
+ * ajuste del restaurante. Las secciones que se quedan sin platos no salen. En el menú del día y en los especiales
+ * solo cuenta su precio cerrado: los platos salen sin precio.
  */
 export function buildMenuView(
   menu: PublicMenu,
@@ -40,6 +41,7 @@ export function buildMenuView(
 ): MenuView {
   const { locale, messages: m } = opts;
   const units = { perKg: m.perKg, per100g: m.per100g, market: m.marketPrice };
+  const showDishPrices = menu.kind === 'carta';
   const sections = menu.sections
     .map((s) => ({
       id: s.id,
@@ -70,7 +72,9 @@ export function buildMenuView(
             id: item.id,
             name,
             description: textFor(d.descriptions, locale),
-            prices: d.prices.map((p) => ({ label: textFor(p.labels, locale), text: formatDishPrice(p, locale, units), market: p.kind === 'market' })),
+            prices: showDishPrices
+              ? d.prices.map((p) => ({ label: textFor(p.labels, locale), text: formatDishPrice(p, locale, units), market: p.kind === 'market' }))
+              : [],
             allergens: d.allergens,
             tags: d.tags,
             photoUrl: d.photoPath ? opts.mediaUrl(d.photoPath) : null,

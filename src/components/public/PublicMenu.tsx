@@ -67,7 +67,8 @@ export function PublicMenu({ view, labels }: { view: MenuView; labels: PublicMen
             </button>
           )}
         </details>
-        <p role="status" className="mt-2 text-sm font-semibold empty:hidden">
+        {/* Siempre en la página (vacía, solo para lectores de pantalla) para que se anuncien los cambios. */}
+        <p role="status" className={status ? 'mt-2 text-sm font-semibold' : 'sr-only'}>
           {status}
         </p>
         <p className="mt-2 text-xs text-neutral-600">{labels.allergenDisclaimer}</p>
@@ -129,9 +130,10 @@ function DishCard({ item, labels }: { item: MenuViewItem; labels: PublicMenuLabe
               <li key={i}>
                 {price.label && <span className="text-neutral-600">{price.label}: </span>}
                 {price.market ? (
-                  <abbr title={labels.marketPriceTitle} className="font-bold no-underline">
-                    {price.text}
-                  </abbr>
+                  <span className="font-bold">
+                    <span aria-hidden="true">{price.text}</span>
+                    <span className="sr-only">{labels.marketPriceTitle}</span>
+                  </span>
                 ) : (
                   <span className="font-bold">{price.text}</span>
                 )}

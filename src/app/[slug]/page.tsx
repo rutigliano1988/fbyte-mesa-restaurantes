@@ -12,6 +12,7 @@ import { getMessages } from '@/lib/i18n/messages';
 import { getPublicMenu, getPublicRestaurant, mediaUrl } from '@/lib/public/data';
 import { directionsUrl, fullAddress, mapEmbedUrl, localeHref, menuPath, menuTabHref, priceLabel } from '@/lib/public/format';
 import { jsonLdScript, restaurantJsonLd } from '@/lib/public/jsonld';
+import type { PublicMenuData } from '@/lib/public/menu-schema';
 import { menusToShow } from '@/lib/public/menu-view';
 import { requestLocale } from '@/lib/public/locale';
 import { descriptionFor } from '@/lib/public/restaurant-schema';
@@ -75,8 +76,15 @@ export default async function RestaurantPage(props: Props) {
     { network: 'Facebook', url: r.facebook },
     { network: 'TikTok', url: r.tiktok },
   ].filter((s): s is { network: string; url: string } => s.url !== null);
+  // Un fallo de la carta no tumba la mini-web: sale como si no hubiera carta.
+  let menuData: PublicMenuData | null = null;
+  try {
+    menuData = await getPublicMenu(r.slug);
+  } catch (e) {
+    console.error('[mini-web] no se pudo cargar la carta', e instanceof Error ? e.message : e);
+  }
   // Cartas que se ven ahora (zona horaria del restaurante); el menú del día o especial que toca, destacado.
-  const menus = menusToShow(await getPublicMenu(r.slug), new Date(), r.timezone);
+  const menus = menusToShow(menuData, new Date(), r.timezone);
   const featuredMenu = menus.find((x) => x.kind !== 'carta') ?? null;
   const menuUrl = menus.length > 0 ? publicUrl(siteUrl(), menuPath(r.slug), locale) : undefined;
   const jsonLd = restaurantJsonLd(r, { url: publicUrl(siteUrl(), path, locale), mediaUrl, menuUrl });

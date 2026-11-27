@@ -99,7 +99,14 @@ export default async function PublicMenuPage(props: Props) {
             )}
             <span className="text-lg font-extrabold">{r.name}</span>
           </Link>
-          <LanguageSwitcher enabled={r.enabledLocales} locale={locale} path={path} label={m.language} className="text-sm" />
+          <LanguageSwitcher
+            enabled={r.enabledLocales}
+            locale={locale}
+            path={path}
+            label={m.language}
+            query={selected && selected.id === carta ? { carta: selected.id } : undefined}
+            className="text-sm"
+          />
         </div>
       </header>
 
@@ -118,7 +125,7 @@ export default async function PublicMenuPage(props: Props) {
                       aria-current={current ? 'page' : undefined}
                       className={
                         current
-                          ? 'inline-block rounded-full bg-[var(--accent)] px-4 py-2 font-bold text-[var(--on-accent)]'
+                          ? 'inline-block rounded-full border-2 border-[var(--accent-text)] bg-[var(--accent)] px-4 py-2 font-bold text-[var(--on-accent)]'
                           : 'inline-block rounded-full border-2 border-neutral-300 px-4 py-2 font-bold hover:border-neutral-500'
                       }
                     >

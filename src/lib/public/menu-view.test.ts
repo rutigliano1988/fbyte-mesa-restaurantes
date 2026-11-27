@@ -60,6 +60,18 @@ describe('buildMenuView', () => {
     });
   });
 
+  it('en el menú del día y en los especiales, los platos salen sin precio (solo cuenta el precio cerrado)', () => {
+    for (const menu of [daily, { ...daily, kind: 'special' as const }]) {
+      const v = view(menu);
+      expect(v.priceText).toBe(nb('14,50 €'));
+      expect(v.sections[0].items.map((i) => [i.name, i.prices])).toEqual([
+        ['Sopa de pescado', []],
+        ['Croquetas', []],
+      ]);
+    }
+    expect(view(carta).sections[0].items[0].prices).toHaveLength(2);
+  });
+
   it('las secciones vacías no salen; las fotos llevan su URL y sus textos alternativos', () => {
     const v = view();
     expect(v.sections.map((s) => s.id)).toEqual(['entrantes', 'principales']);

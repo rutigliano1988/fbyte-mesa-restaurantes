@@ -9,7 +9,14 @@ export const dynamic = 'force-dynamic';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const site = siteUrl();
-  const [restaurants, menus] = await Promise.all([getPublicSlugs(), getPublicMenuSlugs()]);
+  // Si fallan las cartas, el sitemap sale igual con las mini-webs.
+  const [restaurants, menus] = await Promise.all([
+    getPublicSlugs(),
+    getPublicMenuSlugs().catch((e: unknown) => {
+      console.error('[sitemap] no se pudieron cargar las cartas', e instanceof Error ? e.message : e);
+      return [];
+    }),
+  ]);
   return [
     ...restaurants.map((r) => ({
       url: `${site}/${r.slug}`,

@@ -38,6 +38,7 @@ describe('mensajes de la carta', () => {
       expect(Object.keys(m.tags), locale).toEqual([...DISH_TAGS]);
       for (const text of [...Object.values(m.allergens), ...Object.values(m.tags)]) expect(text.trim(), locale).not.toBe('');
       expect(m.filterHidden(0).trim(), locale).not.toBe('');
+      expect(m.filterHidden(0), locale).not.toMatch(/\d/);
       expect(m.filterHidden(7), locale).toContain('7');
     }
     expect(getMessages('es').allergens).toEqual(ALLERGEN_LABELS_ES);
@@ -48,6 +49,7 @@ describe('mensajes de la carta', () => {
     const es = getMessages('es');
     expect(es.viewMenu).toBe('Ver carta');
     expect(es.menuTitle('La Taberna')).toBe('Carta de La Taberna');
+    expect(es.filterHidden(0)).toBe('Ningún plato queda oculto por tu filtro.');
     expect(es.filterHidden(1)).toBe('Hay 1 plato oculto por tu filtro.');
     expect(es.filterHidden(3)).toBe('Hay 3 platos ocultos por tu filtro.');
     expect(es.vatIncluded).toBe('Precios con IVA incluido');
