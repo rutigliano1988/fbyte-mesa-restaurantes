@@ -1,9 +1,10 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect, useRef, useState, useTransition } from 'react';
+import { useRef, useState, useTransition } from 'react';
 import { ActionForm, FormField, FormSelect, FormTextArea, useActionForm } from '@/components/forms/ActionForm';
 import { CustomerWarnings } from '@/components/reservations/CustomerWarnings';
+import { RefreshOnError } from '@/components/reservations/RefreshOnError';
 import { TableCheckboxes } from '@/components/reservations/TableCheckboxes';
 import { createPhoneReservation, lookupCustomer, updateReservation, type CustomerLookup } from '@/lib/actions/reservations';
 import { freeTables, getAvailableSlots, proposeTable, type BlockSpan, type BookingTable, type Occupancy } from '@/lib/reservations/availability';
@@ -46,16 +47,6 @@ type Props = {
 
 const smallChip =
   'rounded-[6px] border-2 px-2.5 py-1 text-sm font-bold tabular-nums focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-navy';
-
-/** Si la BD rechaza (p. ej., la mesa se acaba de ocupar), se vuelven a pedir los datos para proponer otra. */
-function RefreshOnError() {
-  const { state } = useActionForm();
-  const router = useRouter();
-  useEffect(() => {
-    if (state.error) router.refresh();
-  }, [state, router]);
-  return null;
-}
 
 /**
  * Nueva reserva por teléfono o cambio de una reserva. Calcula al momento (módulo puro) las horas con hueco y la

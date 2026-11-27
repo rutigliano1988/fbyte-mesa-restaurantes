@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { RealtimeRefresh } from '@/components/reservations/RealtimeRefresh';
 import { ReservationsNav } from '@/components/reservations/ReservationsNav';
 import { WalkInForm } from '@/components/reservations/WalkInForm';
 import { Notice } from '@/components/ui/Notice';
@@ -22,7 +23,8 @@ export default async function WalkInPage({ params }: { params: Promise<{ restaur
   const ctx = await requirePanelAccess(restaurantId, 'reservations.manage');
   const config = await getBookingConfig(restaurantId);
   const today = todayInTimeZone(config.timezone);
-  const day = await getBookingDay(restaurantId, today, config.timezone);
+  // En modo soporte el formulario no se muestra: no se piden los datos del día.
+  const day = ctx.readOnly ? null : await getBookingDay(restaurantId, today, config.timezone);
   const now = nowToTheMinute();
   // Las mesas desactivadas no se ofrecen.
   const tables = config.tables.filter((t) => t.active);
@@ -38,19 +40,24 @@ export default async function WalkInPage({ params }: { params: Promise<{ restaur
             Volver a hoy
           </Link>
         </p>
+        {!ctx.readOnly && <RealtimeRefresh restaurantId={restaurantId} />}
       </header>
       {ctx.readOnly ? (
         <Notice tone="info">En modo soporte no se pueden sentar walk-ins.</Notice>
       ) : tables.length === 0 ? (
-        <Notice tone="info">Aún no tienes mesas activas: créalas o actívalas en Reservas → Ajustes.</Notice>
+        <Notice tone="info">
+          {can(ctx.role, 'settings.booking')
+            ? 'Aún no tienes mesas activas: créalas o actívalas en Reservas → Ajustes.'
+            : 'Aún no hay mesas activas. Pídele a tu encargado que las cree o las active.'}
+        </Notice>
       ) : (
         <SectionCard title="¿Cuántos son?">
           <WalkInForm
             restaurantId={restaurantId}
             nowMs={now}
             tables={tables}
-            occupancy={day.occupancy}
-            blocks={day.blocks}
+            occupancy={day?.occupancy ?? []}
+            blocks={day?.blocks ?? []}
             settings={config.settings}
           />
         </SectionCard>

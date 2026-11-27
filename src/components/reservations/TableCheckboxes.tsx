@@ -15,6 +15,7 @@ export function TableCheckboxes({
   onChange,
   partySize,
   error,
+  emptyText = 'No hay ninguna mesa libre a esa hora.',
 }: {
   name?: string;
   legend: string;
@@ -24,6 +25,8 @@ export function TableCheckboxes({
   onChange: (ids: string[]) => void;
   partySize: number;
   error?: string;
+  /** Texto cuando no hay ninguna mesa que ofrecer (el walk-in dice «ahora»). */
+  emptyText?: string;
 }) {
   const freeIds = new Set(free.map((t) => t.id));
   const extra = all.filter((t) => selected.includes(t.id) && !freeIds.has(t.id));
@@ -37,7 +40,7 @@ export function TableCheckboxes({
     <fieldset className="flex flex-col gap-2" aria-invalid={!!error} tabIndex={-1} aria-describedby={error ? `${errId} ${sumId}` : sumId}>
       <legend className="mb-1 text-sm font-bold">{legend}</legend>
       {options.length === 0 ? (
-        <p className="text-sm text-muted">No hay ninguna mesa libre a esa hora.</p>
+        <p className="text-sm text-muted">{emptyText}</p>
       ) : (
         <ul className="grid gap-2 sm:grid-cols-2">
           {options.map((t) => (
