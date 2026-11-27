@@ -5,6 +5,7 @@ import { buttonClass } from '@/components/ui/Button';
 import { changeReservationStatus, undoReservationStatus } from '@/lib/actions/reservations';
 import { GENERIC_ERROR } from '@/lib/menu/sortable';
 import { STATUS_LABELS_ES, STATUS_STYLES, type ReservationStatus } from '@/lib/reservations/codes';
+import { shouldIgnoreClick } from '@/lib/reservations/click-guard';
 import { canUndo, nextActions, undoLabel } from '@/lib/reservations/transitions';
 
 const TONES = { primary: 'primary', secondary: 'secondary', danger: 'danger' } as const;
@@ -40,17 +41,20 @@ export function ReservationActions({
   const undoRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    if (pending || !moveFocus.current) return;
+    if (pending) return;
+    busy.current = false; // la guarda se libera cuando la transición termina, no al volver la acción
+    if (!moveFocus.current) return;
     moveFocus.current = false;
     (undoRef.current ?? statusRef.current)?.focus();
   }, [pending, status]);
 
   function run(next: ReservationStatus | null) {
-    if (busy.current || readOnly) return;
+    if (shouldIgnoreClick({ busy: busy.current, pending, readOnly })) return;
     busy.current = true;
     setMessage({ text: '', error: false });
     startTransition(async () => {
-      if (next) setShown(next);
+      const optimistic = next ?? previousStatus;
+      if (optimistic) setShown(optimistic);
       let result: { error?: string; success?: string };
       try {
         result = next
@@ -59,7 +63,6 @@ export function ReservationActions({
       } catch {
         result = { error: GENERIC_ERROR };
       }
-      busy.current = false;
       if (result.error) {
         setMessage({ text: result.error, error: true });
       } else {
@@ -79,7 +82,6 @@ export function ReservationActions({
         <span
           ref={statusRef}
           tabIndex={-1}
-          aria-busy={pending}
           className={`inline-flex rounded-full border-2 px-2.5 py-0.5 text-xs font-bold outline-offset-2 focus-visible:outline-3 focus-visible:outline-navy ${STATUS_STYLES[shown]}`}
         >
           <span className="sr-only">Estado: </span>
@@ -110,10 +112,10 @@ export function ReservationActions({
           </button>
         )}
       </div>
-      <p aria-live="polite" className="text-sm font-medium text-muted">
+      <p aria-live="polite" className={`text-sm font-medium text-muted${message.error || !message.text ? ' sr-only' : ''}`}>
         {message.error ? '' : message.text}
       </p>
-      <p role="alert" className="text-sm font-medium text-red-700">
+      <p role="alert" className={`text-sm font-medium text-red-700${message.error && message.text ? '' : ' sr-only'}`}>
         {message.error ? message.text : ''}
       </p>
     </div>
