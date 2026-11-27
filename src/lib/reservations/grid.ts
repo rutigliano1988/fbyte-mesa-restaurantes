@@ -203,7 +203,3 @@ export function reservationBarText(r: Pick<GridReservation, 'name' | 'partySize'
 export function reservationBarLabel(r: GridReservation, tableName: string, timeRange: string): string {
   return `${reservationBarText(r)} ${r.partySize === 1 ? 'persona' : 'personas'}, ${tableName}, ${timeRange}, ${STATUS_LABELS_ES[r.status]}. Abrir la reserva`;
 }
-
-export function blockLabel(tableName: string, timeRange: string, reason: string | null): string {
-  return `${tableName} bloqueada, ${timeRange}${reason ? `: ${reason}` : ''}`;
-}

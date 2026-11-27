@@ -64,7 +64,7 @@ export default async function SchedulePage({ params }: { params: Promise<{ resta
               <FormField label="Empieza" name="start" type="time" required />
               <FormField label="Acaba" name="end" type="time" required />
               <FormField label="Última reserva (opcional)" name="lastBooking" type="time" hint="Si la dejas vacía, una hora antes de acabar." />
-              <FormSelect label="Horas de reserva" name="slotInterval" defaultValue="15" options={SLOT_INTERVAL_OPTIONS} />
+              <FormSelect label="Cada cuánto se reserva" name="slotInterval" defaultValue="15" options={SLOT_INTERVAL_OPTIONS} />
             </div>
             <FormCheckboxGroup
               legend="Días"

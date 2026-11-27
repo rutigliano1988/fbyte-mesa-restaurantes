@@ -181,6 +181,16 @@ describe('estados', () => {
     rpc.mockResolvedValueOnce({ data: 'confirmed', error: null });
     expect(await undoReservationStatus(R, ID)).toEqual({ success: 'Deshecho: vuelve a «Confirmada».' });
   });
+
+  it('deshacer con la mesa ya ocupada o bloqueada explica que hay que crear una reserva nueva', async () => {
+    const text = 'No se puede deshacer: esa mesa ya está ocupada o bloqueada a esa hora. Crea una reserva nueva.';
+    for (const message of ['SLOT_TAKEN', 'TABLE_BLOCKED']) {
+      rpc.mockResolvedValueOnce({ data: null, error: { message } });
+      expect(await undoReservationStatus(R, ID)).toEqual({ error: text });
+    }
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'NOTHING_TO_UNDO' } });
+    expect(await undoReservationStatus(R, ID)).toEqual({ error: mapDbError('NOTHING_TO_UNDO') });
+  });
 });
 
 describe('errores inesperados', () => {

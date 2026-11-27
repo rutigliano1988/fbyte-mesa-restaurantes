@@ -33,10 +33,6 @@ export function nextActions(status: ReservationStatus): StatusAction[] {
   return Object.hasOwn(TRANSITIONS, status) ? TRANSITIONS[status] : [];
 }
 
-export function canTransition(from: ReservationStatus, to: ReservationStatus): boolean {
-  return nextActions(from).some((a) => a.to === to);
-}
-
 export function canUndo(status: ReservationStatus, previous: ReservationStatus | null): boolean {
   return UNDOABLE_STATUSES.includes(status) && previous !== null && UNDO_TARGETS.includes(previous);
 }

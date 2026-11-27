@@ -46,19 +46,15 @@ export function ServiceRow({
           <FormField id={`end-${service.id}`} label="Acaba" name="end" type="time" defaultValue={minutesToTime(service.endMinute)} required />
           <FormField
             id={`last-${service.id}`}
-            label="Última reserva"
+            label="Última reserva (opcional)"
             name="lastBooking"
             type="time"
             defaultValue={service.lastBookingMinute === null ? '' : minutesToTime(service.lastBookingMinute)}
-            hint={
-              service.lastBookingMinute === null
-                ? `Vacío: ${minutesToTime(effectiveLastBooking(service.startMinute, service.endMinute, null))}`
-                : undefined
-            }
+            hint={`Si la dejas vacía, será a las ${minutesToTime(effectiveLastBooking(service.startMinute, service.endMinute, null))}.`}
           />
           <FormSelect
             id={`interval-${service.id}`}
-            label="Horas de reserva"
+            label="Cada cuánto se reserva"
             name="slotInterval"
             defaultValue={String(service.slotIntervalMin)}
             options={SLOT_INTERVAL_OPTIONS}

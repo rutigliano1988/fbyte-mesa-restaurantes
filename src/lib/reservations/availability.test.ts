@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  blockConflictText,
   blockFor,
+  blockedReservations,
   capacityOf,
   compareTablesForDisplay,
   freeTables,
@@ -173,5 +175,27 @@ describe('getAvailableSlots', () => {
     expect(canary.map((s) => s.minute)).toEqual([1380, 1410, 1440, 1470, 1560, 1590, 1620]);
     expect(new Set(canary.map((s) => s.startMs)).size).toBe(canary.length);
     expect(new Date(canary.find((s) => s.minute === 1560)!.startMs).toISOString()).toBe('2026-03-29T01:00:00.000Z');
+  });
+});
+
+describe('bloqueo encima de reservas', () => {
+  const occupancy: Occupancy[] = [
+    { reservationId: 'r1', tableId: 't1', startMs: 0, endMs: 2 * H },
+    { reservationId: 'r2', tableId: 't2', startMs: H, endMs: 3 * H },
+    { reservationId: 'r2', tableId: 't3', startMs: H, endMs: 3 * H },
+    { reservationId: 'r3', tableId: 't1', startMs: 4 * H, endMs: 5 * H },
+  ];
+  const block = (tableId: string | null): BlockSpan => ({ id: 'b', tableId, startMs: H, endMs: 4 * H, reason: null });
+
+  it('cuenta las reservas activas que se solapan en su mesa (o en cualquiera, si es de todo el restaurante)', () => {
+    expect(blockedReservations(block('t1'), occupancy)).toBe(1);
+    expect(blockedReservations(block('t4'), occupancy)).toBe(0);
+    // r2 ocupa dos mesas: cuenta una vez; r3 empieza justo cuando acaba el bloqueo.
+    expect(blockedReservations(block(null), occupancy)).toBe(2);
+  });
+
+  it('el aviso dice cuántas son', () => {
+    expect(blockConflictText(2)).toBe('Este bloqueo coincide con 2 reservas activas: revísalas en el día.');
+    expect(blockConflictText(1)).toBe('Este bloqueo coincide con 1 reserva activa: revísala en el día.');
   });
 });

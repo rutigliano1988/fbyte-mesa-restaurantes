@@ -96,6 +96,15 @@ describe('última reserva e intervalo de un servicio', () => {
     expect(errors(cena, { lastBooking: '9', slotInterval: '15' })).toEqual({ lastBooking: 'Escribe la hora así: 21:30.' });
     expect(errors(cena, { lastBooking: '', slotInterval: '20' })).toEqual({ slotInterval: 'Elige cada 15 o cada 30 minutos.' });
   });
+
+  it('si el inicio queda por encima de la última reserva, lo dice (no habla del cierre)', () => {
+    const early = 'La última reserva no puede ser antes del inicio del servicio.';
+    // Comida 15:30–16:00 con la última reserva de antes (15:00).
+    expect(errors(serviceBookingSchema({ startMinute: 930, endMinute: 960 }), { lastBooking: '15:00', slotInterval: '15' })).toEqual({ lastBooking: early });
+    // Cena 20:00–00:30: las 19:00 son antes del inicio; las 03:00, después del cierre.
+    expect(errors(cena, { lastBooking: '19:00', slotInterval: '15' })).toEqual({ lastBooking: early });
+    expect(errors(cena, { lastBooking: '03:00', slotInterval: '15' })).toEqual({ lastBooking: 'La última reserva tiene que ser antes del cierre del servicio.' });
+  });
 });
 
 describe('reservas', () => {

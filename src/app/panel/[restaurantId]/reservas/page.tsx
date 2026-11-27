@@ -9,9 +9,8 @@ import { Notice } from '@/components/ui/Notice';
 import { SectionCard } from '@/components/ui/SectionCard';
 import { requirePanelAccess } from '@/lib/auth/guards';
 import { can } from '@/lib/permissions';
-import { isActiveStatus } from '@/lib/reservations/codes';
 import { getBookingConfig, getBookingDay } from '@/lib/reservations/data';
-import { currentServiceDate, groupByService, servicesForDate, summarize } from '@/lib/reservations/day';
+import { currentServiceDate, groupByService, servicesForDate, summarize, unassignedByTime } from '@/lib/reservations/day';
 import type { PanelReservation } from '@/lib/reservations/rows';
 import { addDays, dateParam, formatTime, serviceDayWindow } from '@/lib/reservations/time';
 import { formatRange } from '@/lib/schedule';
@@ -57,7 +56,7 @@ export default async function ReservationsDayPage({
     servicesForDate(addDays(date, -1), config.services, config.exceptions),
   );
   const ofTheDay = [...groups.flatMap((g) => g.items), ...outside];
-  const unassigned = ofTheDay.filter((r) => isActiveStatus(r.status) && r.tableIds.length === 0);
+  const unassigned = unassignedByTime(ofTheDay);
   const withTable = (items: PanelReservation[]) => items.filter((r) => !unassigned.includes(r));
   const tableNames = new Map(config.tables.map((t) => [t.id, t.name]));
   const canConfigure = can(ctx.role, 'settings.booking');

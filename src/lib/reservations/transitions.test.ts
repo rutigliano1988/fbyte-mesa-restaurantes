@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { RESERVATION_STATUSES } from './codes';
-import { canTransition, canUndo, nextActions, undoLabel } from './transitions';
+import { canUndo, nextActions, undoLabel } from './transitions';
 
 describe('cambios de estado', () => {
   it('pendiente → confirmar, rechazar o cancelar', () => {
@@ -18,7 +18,7 @@ describe('cambios de estado', () => {
     }
   });
 
-  it('canTransition coincide con la tabla de la BD', () => {
+  it('los botones de cada estado coinciden con la tabla de la BD (reservation_transition_ok)', () => {
     const allowed = new Set([
       'pending>confirmed',
       'pending>rejected',
@@ -31,7 +31,9 @@ describe('cambios de estado', () => {
       'seated>completed',
     ]);
     for (const from of RESERVATION_STATUSES) {
-      for (const to of RESERVATION_STATUSES) expect(canTransition(from, to), `${from}>${to}`).toBe(allowed.has(`${from}>${to}`));
+      for (const to of RESERVATION_STATUSES) {
+        expect(nextActions(from).some((a) => a.to === to), `${from}>${to}`).toBe(allowed.has(`${from}>${to}`));
+      }
     }
   });
 

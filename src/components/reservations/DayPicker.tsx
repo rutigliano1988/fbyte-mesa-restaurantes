@@ -31,7 +31,8 @@ export function DayPicker({ path, date, today, keep = {} }: { path: string; date
           ))}
           <label className="flex flex-col gap-1 text-sm font-bold">
             Ir a la fecha
-            <input type="date" name="fecha" defaultValue={date} required className={`${inputClass} py-1.5`} />
+            {/* key: al ir con ←/→ la página no se remonta y defaultValue no cambiaría solo. */}
+            <input key={date} type="date" name="fecha" defaultValue={date} required className={`${inputClass} py-1.5`} />
           </label>
           <button type="submit" className={small}>
             Ver

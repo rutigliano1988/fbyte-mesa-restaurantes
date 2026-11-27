@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BookingTable } from './availability';
 import {
-  blockLabel,
   buildGrid,
   focusTarget,
   freeCellLabel,
@@ -301,5 +300,4 @@ it('nombres accesibles: el de la barra empieza por su texto visible', () => {
   const one = { ...r, partySize: 1 };
   expect(reservationBarText(one)).toBe('García · 1');
   expect(reservationBarLabel(one, 'T4', '21:00–22:30')).toBe('García · 1 persona, T4, 21:00–22:30, Confirmada. Abrir la reserva');
-  expect(blockLabel('T4', '13:00–16:00', 'Obras')).toBe('T4 bloqueada, 13:00–16:00: Obras');
 });

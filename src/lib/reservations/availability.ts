@@ -43,6 +43,21 @@ export function blockFor(tableId: string, startMs: number, endMs: number, blocks
   return blocks.find((b) => (b.tableId === null || b.tableId === tableId) && overlaps(startMs, endMs, b.startMs, b.endMs)) ?? null;
 }
 
+/** Cuántas reservas activas (con mesa) coinciden con un bloqueo: en su mesa o, si es de todo el restaurante, en cualquiera. */
+export function blockedReservations(block: BlockSpan, occupancy: readonly Occupancy[]): number {
+  const ids = occupancy
+    .filter((o) => (block.tableId === null || o.tableId === block.tableId) && overlaps(block.startMs, block.endMs, o.startMs, o.endMs))
+    .map((o) => o.reservationId);
+  return new Set(ids).size;
+}
+
+/** Aviso (no impide nada) de un bloqueo puesto encima de reservas. */
+export function blockConflictText(count: number): string {
+  return count === 1
+    ? 'Este bloqueo coincide con 1 reserva activa: revísala en el día.'
+    : `Este bloqueo coincide con ${count} reservas activas: revísalas en el día.`;
+}
+
 export function isTableFree(
   tableId: string,
   startMs: number,

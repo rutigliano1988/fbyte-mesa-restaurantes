@@ -45,7 +45,7 @@ export const STATUS_STYLES: Record<ReservationStatus, string> = {
 export const SOURCE_LABELS_ES: Record<ReservationSource, string> = {
   online: 'Web',
   phone: 'Teléfono',
-  walk_in: 'Sin reserva',
+  walk_in: 'Walk-in',
 };
 
 export const CUSTOMER_TAGS = ['vip', 'regular', 'problem'] as const;
@@ -65,10 +65,6 @@ export const BOOKING_LIMITS = {
   notes: 500,
   blockReason: 140,
 } as const;
-
-export function isReservationStatus(value: unknown): value is ReservationStatus {
-  return typeof value === 'string' && Object.hasOwn(STATUS_LABELS_ES, value);
-}
 
 export function isActiveStatus(status: ReservationStatus): boolean {
   return ACTIVE_STATUSES.includes(status);

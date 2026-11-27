@@ -170,6 +170,8 @@ export async function changeReservationStatus(restaurantId: string, reservationI
   );
 }
 
+const UNDO_TABLE_TAKEN = 'No se puede deshacer: esa mesa ya está ocupada o bloqueada a esa hora. Crea una reserva nueva.';
+
 /** «Deshacer»: vuelve al estado anterior si la mesa sigue libre. */
 export async function undoReservationStatus(restaurantId: string, reservationId: string): Promise<FormState> {
   if (!isUuid(reservationId)) return { error: mapDbError('INVALID_INPUT') };
@@ -178,7 +180,9 @@ export async function undoReservationStatus(restaurantId: string, reservationId:
     'reservations.manage',
     async (supabase) => {
       const { data, error } = await supabase.rpc('undo_reservation_status', { p_restaurant_id: restaurantId, p_reservation_id: reservationId });
-      if (error) return { error: dbError('reservas.undoReservationStatus', error) };
+      if (error) {
+        return { error: /SLOT_TAKEN|TABLE_BLOCKED/.test(error.message) ? UNDO_TABLE_TAKEN : dbError('reservas.undoReservationStatus', error) };
+      }
       const back = statusSchema.safeParse(data);
       return { success: back.success ? `Deshecho: vuelve a «${STATUS_LABELS_ES[back.data]}».` : 'Deshecho.' };
     },

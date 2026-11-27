@@ -1,5 +1,5 @@
 import { MINUTES_PER_DAY } from '@/lib/schedule';
-import { COUNTED_STATUSES, type ReservationStatus } from './codes';
+import { COUNTED_STATUSES, isActiveStatus, type ReservationStatus } from './codes';
 import { addDays, localParts, serviceDayMinute, weekdayOf, zonedTimeToUtc } from './time';
 
 /** Servicio de la semana tal como se guarda (Hito 2 + los dos campos del Hito 4A). */
@@ -103,6 +103,11 @@ export function groupByService<T extends { startMs: number }>(
     else if (minute < MINUTES_PER_DAY) outside.push(item);
   }
   return { groups, outside };
+}
+
+/** «Sin mesa asignada»: las reservas activas sin mesa, por hora de inicio (de todos los servicios a la vez). */
+export function unassignedByTime<T extends { startMs: number; status: ReservationStatus; tableIds: readonly string[] }>(items: readonly T[]): T[] {
+  return items.filter((r) => isActiveStatus(r.status) && r.tableIds.length === 0).sort((a, b) => a.startMs - b.startMs);
 }
 
 export type DaySummary = { reservations: number; covers: number; pending: number };

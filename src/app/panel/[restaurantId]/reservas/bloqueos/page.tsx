@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { ActionForm, FormCheckbox, FormField, FormSelect } from '@/components/forms/ActionForm';
 import { DayPicker } from '@/components/reservations/DayPicker';
 import { RealtimeRefresh } from '@/components/reservations/RealtimeRefresh';
@@ -6,7 +7,7 @@ import { ReservationsNav } from '@/components/reservations/ReservationsNav';
 import { SectionCard } from '@/components/ui/SectionCard';
 import { createBlock, deleteBlock } from '@/lib/actions/blocks';
 import { requirePanelAccess } from '@/lib/auth/guards';
-import { compareTablesForDisplay } from '@/lib/reservations/availability';
+import { blockConflictText, blockedReservations, compareTablesForDisplay } from '@/lib/reservations/availability';
 import { getBookingConfig, getBookingDay } from '@/lib/reservations/data';
 import { currentServiceDate } from '@/lib/reservations/day';
 import { dateParam, formatDayEs, formatTime, localParts, serviceDayWindow } from '@/lib/reservations/time';
@@ -56,11 +57,21 @@ export default async function BlocksPage({
           <ul className="flex flex-col gap-2">
             {blocks.map((b) => {
               const what = b.tableId ? (tableNames.get(b.tableId) ?? 'Mesa') : 'Todo el restaurante';
+              // Un bloqueo puede ponerse encima de reservas: solo se avisa.
+              const clashes = blockedReservations(b, day.occupancy);
               return (
                 <li key={b.id} className="flex flex-wrap items-center justify-between gap-2 rounded-[6px] border-2 border-ink/10 px-3 py-2">
                   <span>
                     <strong>{what}</strong> · {when(b.startMs)}–{when(b.endMs)}
                     {b.reason && ` · ${b.reason}`}
+                    {clashes > 0 && (
+                      <span className="mt-1 block w-fit rounded-[6px] bg-peach-soft px-2 py-0.5 text-sm font-bold text-ink">
+                        {blockConflictText(clashes)}{' '}
+                        <Link href={`/panel/${restaurantId}/reservas?fecha=${date}`} className="text-navy underline">
+                          Ver el día
+                        </Link>
+                      </span>
+                    )}
                   </span>
                   {!ctx.readOnly && (
                     <form action={deleteBlock}>

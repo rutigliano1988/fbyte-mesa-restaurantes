@@ -13,6 +13,7 @@ import {
   startForEdit,
   summarize,
   type ServiceConfig,
+  unassignedByTime,
 } from './day';
 import { zonedTimeToUtc } from './time';
 
@@ -113,6 +114,12 @@ it('serviceDateOf: la madrugada de la cena de la víspera es de la víspera', ()
   expect(serviceDateOf(zonedTimeToUtc('2030-06-15', 10, TZ), TZ, services, [])).toBe('2030-06-14');
   expect(serviceDateOf(zonedTimeToUtc('2030-06-15', 200, TZ), TZ, services, [])).toBe('2030-06-15');
   expect(serviceDateOf(zonedTimeToUtc('2030-06-14', 800, TZ), TZ, services, [])).toBe('2030-06-14');
+});
+
+it('«Sin mesa asignada»: las activas sin mesa, por hora de inicio (sin importar el servicio)', () => {
+  const r = (id: string, startMs: number, status: 'confirmed' | 'cancelled_customer' | 'seated', tableIds: string[] = []) => ({ id, startMs, status, tableIds });
+  const items = [r('cena', 3000, 'confirmed'), r('fuera', 500, 'seated'), r('comida', 1000, 'confirmed'), r('con-mesa', 200, 'confirmed', ['t1']), r('cancelada', 100, 'cancelled_customer')];
+  expect(unassignedByTime(items).map((x) => x.id)).toEqual(['fuera', 'comida', 'cena']);
 });
 
 describe('«hoy» en el panel: el día de servicio de ahora', () => {

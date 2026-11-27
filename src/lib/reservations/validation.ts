@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { formStrings } from '@/lib/forms';
-import { MINUTES_PER_DAY, timeToMinutes } from '@/lib/schedule';
+import { MAX_END_MINUTE, MINUTES_PER_DAY, timeToMinutes } from '@/lib/schedule';
 import { isRealDate } from '@/lib/validation/schedule';
 import { uuidSchema } from '@/lib/validation/schemas';
 import { BOOKING_LIMITS, RESERVATION_STATUSES } from './codes';
@@ -140,7 +140,8 @@ export const bookingSettingsSchema = z
 // Servicios: última hora de reserva e intervalo -----------------------------------------------------------------
 /**
  * Campos del Hito 4A de un servicio (ya validadas sus horas): la última reserva (vacía = una hora antes del cierre)
- * tiene que caer dentro del servicio; si es anterior al inicio, es de después de medianoche.
+ * tiene que caer dentro del servicio; si es anterior al inicio, solo vale como madrugada de un servicio que pasa de
+ * medianoche.
  */
 export function serviceBookingSchema(range: { startMinute: number; endMinute: number }) {
   return z
@@ -153,7 +154,12 @@ export function serviceBookingSchema(range: { startMinute: number; endMinute: nu
           ctx.addIssue({ code: 'custom', path: ['lastBooking'], message: BAD_TIME });
           return z.NEVER;
         }
-        const minute = m < range.startMinute ? m + MINUTES_PER_DAY : m;
+        // Antes del inicio solo vale como madrugada de un servicio que pasa de medianoche (hasta las 06:00).
+        const minute = m >= range.startMinute ? m : m + MINUTES_PER_DAY;
+        if (minute !== m && (range.endMinute <= MINUTES_PER_DAY || minute > MAX_END_MINUTE)) {
+          ctx.addIssue({ code: 'custom', path: ['lastBooking'], message: 'La última reserva no puede ser antes del inicio del servicio.' });
+          return z.NEVER;
+        }
         if (minute >= range.endMinute) {
           ctx.addIssue({ code: 'custom', path: ['lastBooking'], message: 'La última reserva tiene que ser antes del cierre del servicio.' });
           return z.NEVER;
