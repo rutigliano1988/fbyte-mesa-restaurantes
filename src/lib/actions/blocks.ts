@@ -2,7 +2,8 @@
 
 import { dbError, mapDbError } from '@/lib/db-errors';
 import { fieldErrorsFrom, formStrings, type FormState } from '@/lib/forms';
-import { zonedTimeToUtc } from '@/lib/reservations/time';
+import { blockRange } from '@/lib/reservations/blocks';
+import { loadBookingConfig } from '@/lib/reservations/data';
 import { BLOCK_FORM_FIELDS, blockFormSchema } from '@/lib/reservations/validation';
 import { uuidSchema } from '@/lib/validation/schemas';
 import { runPanelAction, throwIfError } from './run';
@@ -22,15 +23,14 @@ export async function createBlock(_prev: FormState, fd: FormData): Promise<FormS
     restaurantId,
     'settings.booking',
     async (supabase) => {
-      const { data, error: tzError } = await supabase.from('restaurants').select('timezone').eq('id', restaurantId).single();
-      if (tzError || !data) return { error: dbError('createBlock', tzError) };
-      const tz = (data as { timezone: string }).timezone;
+      const config = await loadBookingConfig(supabase, restaurantId);
+      const { startMs, endMs } = blockRange(config, b.date, b.startMinute, b.endMinute);
       // La mesa tiene que ser de este restaurante: lo garantiza la clave foránea compuesta (table_id, restaurant_id).
       const { error } = await supabase.from('blocks').insert({
         restaurant_id: restaurantId,
         table_id: b.tableId,
-        starts_at: new Date(zonedTimeToUtc(b.date, b.startMinute, tz)).toISOString(),
-        ends_at: new Date(zonedTimeToUtc(b.date, b.endMinute, tz)).toISOString(),
+        starts_at: new Date(startMs).toISOString(),
+        ends_at: new Date(endMs).toISOString(),
         reason: b.reason,
       });
       return error ? { error: dbError('createBlock', error) } : { success: 'Bloqueo guardado.' };
