@@ -1,5 +1,5 @@
-import { expect, it } from 'vitest';
-import { mapDbError } from './db-errors';
+import { afterEach, expect, it, vi } from 'vitest';
+import { dbError, mapDbError } from './db-errors';
 
 it.each([
   ['FORBIDDEN', 'No tienes permiso para hacer esto.'],
@@ -73,4 +73,19 @@ it.each([
 it('cualquier otro error da un mensaje genérico', () => {
   expect(mapDbError('connection reset')).toBe('Algo ha fallado. Vuelve a intentarlo en un momento.');
   expect(mapDbError(undefined)).toBe('Algo ha fallado. Vuelve a intentarlo en un momento.');
+});
+
+afterEach(() => vi.restoreAllMocks());
+
+it('dbError: registra el error desconocido con su contexto y devuelve el texto genérico', () => {
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+  expect(dbError('reservas.create', { message: 'boom 42P01' })).toBe(mapDbError(undefined));
+  expect(log).toHaveBeenCalledTimes(1);
+  expect(log).toHaveBeenCalledWith('[reservas.create]', 'boom 42P01');
+});
+
+it('dbError: no registra un error conocido y devuelve su texto', () => {
+  const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+  expect(dbError('reservas.create', { message: 'SLOT_TAKEN' })).toBe(mapDbError('SLOT_TAKEN'));
+  expect(log).not.toHaveBeenCalled();
 });

@@ -73,3 +73,13 @@ export function mapDbError(message: string | null | undefined): string {
   for (const [pattern, text] of RULES) if (pattern.test(message)) return text;
   return GENERIC;
 }
+
+/**
+ * Texto para enseñar ante un error de la BD. Si el mensaje no corresponde a ninguna regla (error inesperado),
+ * deja rastro en el log con el contexto (nombre de la acción) y el mensaje de PostgREST; nunca datos del cliente.
+ */
+export function dbError(context: string, error: { message?: string | null } | null | undefined): string {
+  const text = mapDbError(error?.message);
+  if (text === GENERIC) console.error(`[${context}]`, error?.message ?? '(sin mensaje)');
+  return text;
+}

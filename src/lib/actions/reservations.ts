@@ -2,7 +2,7 @@
 
 import { redirect, unstable_rethrow } from 'next/navigation';
 import { requirePermission } from '@/lib/auth/guards';
-import { mapDbError } from '@/lib/db-errors';
+import { dbError, mapDbError } from '@/lib/db-errors';
 import { fieldErrorsFrom, type FormState } from '@/lib/forms';
 import { STATUS_LABELS_ES } from '@/lib/reservations/codes';
 import { customerWarnings, type CustomerWarning } from '@/lib/reservations/customers';
@@ -67,8 +67,9 @@ export async function createPhoneReservation(_prev: FormState, fd: FormData): Pr
         p_notes: d.notes,
         p_internal_notes: d.internalNotes,
       });
-      if (error) return { error: mapDbError(error.message) };
+      if (error) return { error: dbError('reservas.createPhoneReservation', error) };
       created.id = createdId(data);
+      if (!created.id) console.error('[reservas.createPhoneReservation] la BD no ha devuelto un id válido');
       return created.id ? { success: 'Reserva guardada.' } : { error: mapDbError(undefined) };
     },
     PANEL_ONLY,
@@ -80,7 +81,7 @@ export async function createPhoneReservation(_prev: FormState, fd: FormData): Pr
 /** Cambia hora, personas, duración, mesas y notas. Duración vacía = la de su tramo. */
 export async function updateReservation(_prev: FormState, fd: FormData): Promise<FormState> {
   const reservationId = field(fd, 'reservationId');
-  if (!isUuid(reservationId)) return { error: mapDbError(undefined) };
+  if (!isUuid(reservationId)) return { error: mapDbError('INVALID_INPUT') };
   const parsed = reservationEditSchema.safeParse(readReservationForm(fd));
   if (!parsed.success) return { fieldErrors: fieldErrorsFrom(parsed.error) };
   const d = parsed.data;
@@ -101,7 +102,7 @@ export async function updateReservation(_prev: FormState, fd: FormData): Promise
         p_notes: d.notes,
         p_internal_notes: d.internalNotes,
       });
-      if (error) return { error: mapDbError(error.message) };
+      if (error) return { error: dbError('reservas.updateReservation', error) };
       saved.ok = true;
       return { success: 'Cambios guardados.' };
     },
@@ -133,8 +134,9 @@ export async function createWalkIn(_prev: FormState, fd: FormData): Promise<Form
         p_duration_min: null,
         p_customer_name: d.name,
       });
-      if (error) return { error: mapDbError(error.message) };
+      if (error) return { error: dbError('reservas.createWalkIn', error) };
       created.id = createdId(data);
+      if (!created.id) console.error('[reservas.createWalkIn] la BD no ha devuelto un id válido');
       return created.id ? { success: 'Sentados.' } : { error: mapDbError(undefined) };
     },
     PANEL_ONLY,
@@ -156,7 +158,7 @@ export async function changeReservationStatus(restaurantId: string, reservationI
         p_reservation_id: reservationId,
         p_status: parsed.data,
       });
-      return error ? { error: mapDbError(error.message) } : { success: `Hecho: ${STATUS_LABELS_ES[parsed.data]}.` };
+      return error ? { error: dbError('reservas.changeReservationStatus', error) } : { success: `Hecho: ${STATUS_LABELS_ES[parsed.data]}.` };
     },
     PANEL_ONLY,
   );
@@ -170,7 +172,7 @@ export async function undoReservationStatus(restaurantId: string, reservationId:
     'reservations.manage',
     async (supabase) => {
       const { data, error } = await supabase.rpc('undo_reservation_status', { p_restaurant_id: restaurantId, p_reservation_id: reservationId });
-      if (error) return { error: mapDbError(error.message) };
+      if (error) return { error: dbError('reservas.undoReservationStatus', error) };
       const back = statusSchema.safeParse(data);
       return { success: back.success ? `Deshecho: vuelve a «${STATUS_LABELS_ES[back.data]}».` : 'Deshecho.' };
     },
@@ -205,8 +207,7 @@ export async function lookupCustomer(restaurantId: string, phone: string): Promi
       .eq('phone', e164)
       .maybeSingle();
     if (error) {
-      console.error('[reservas] lookupCustomer', error.message);
-      return { customer: null, error: mapDbError(undefined) };
+      return { customer: null, error: dbError('reservas.lookupCustomer', error) };
     }
     const c = data as CustomerRow | null;
     if (!c) return { customer: null };
@@ -229,8 +230,6 @@ export async function lookupCustomer(restaurantId: string, phone: string): Promi
     };
   } catch (e) {
     unstable_rethrow(e);
-    const mapped = mapDbError(e instanceof Error ? e.message : undefined);
-    if (mapped === mapDbError(undefined)) console.error('[reservas] lookupCustomer', e);
-    return { customer: null, error: mapped };
+    return { customer: null, error: dbError('reservas.lookupCustomer', e instanceof Error ? e : undefined) };
   }
 }

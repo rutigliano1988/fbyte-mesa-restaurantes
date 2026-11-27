@@ -27,7 +27,10 @@ const config: BookingConfig = {
 };
 vi.mock('@/lib/reservations/data', () => ({ loadBookingConfig: vi.fn(async () => config) }));
 
-const { changeReservationStatus, createPhoneReservation, undoReservationStatus, updateReservation } = await import('./reservations');
+const { requirePermission } = await import('@/lib/auth/guards');
+const { createClient } = await import('@/lib/supabase/server');
+const { runPanelAction } = await import('./run');
+const { changeReservationStatus, createPhoneReservation, createWalkIn, lookupCustomer, undoReservationStatus, updateReservation } = await import('./reservations');
 
 function form(values: Record<string, string | string[]>): FormData {
   const fd = new FormData();
@@ -52,6 +55,22 @@ const phoneForm = {
 beforeEach(() => {
   rpc.mockClear();
   redirect.mockClear();
+  vi.mocked(runPanelAction).mockClear();
+  vi.mocked(requirePermission).mockClear();
+});
+
+it('todas las acciones pasan por runPanelAction con reservations.manage y sin invalidar la web pública', async () => {
+  const run = vi.mocked(runPanelAction);
+  await createPhoneReservation({}, form(phoneForm));
+  await updateReservation({}, form({ ...phoneForm, reservationId: ID, tableMode: 'keep', tableIds: [T1] }));
+  await createWalkIn({}, form({ restaurantId: R, partySize: '2', tableIds: [T1] }));
+  await changeReservationStatus(R, ID, 'seated');
+  await undoReservationStatus(R, ID);
+  expect(run).toHaveBeenCalledTimes(5);
+  for (const call of run.mock.calls) {
+    expect(call[1]).toBe('reservations.manage');
+    expect(call[3]).toEqual({ publicData: false });
+  }
 });
 
 describe('createPhoneReservation', () => {
@@ -113,5 +132,93 @@ describe('estados', () => {
     expect(rpc).toHaveBeenCalledWith('set_reservation_status', { p_restaurant_id: R, p_reservation_id: ID, p_status: 'seated' });
     rpc.mockResolvedValueOnce({ data: 'confirmed', error: null });
     expect(await undoReservationStatus(R, ID)).toEqual({ success: 'Deshecho: vuelve a «Confirmada».' });
+  });
+});
+
+describe('errores inesperados', () => {
+  it('una respuesta sin id válido tras crear se registra y enseña el mensaje genérico', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    rpc.mockResolvedValueOnce({ data: { id: 'no-es-uuid' }, error: null });
+    expect(await createPhoneReservation({}, form(phoneForm))).toEqual({ error: mapDbError(undefined) });
+    rpc.mockResolvedValueOnce({ data: null, error: null });
+    expect(await createWalkIn({}, form({ restaurantId: R, partySize: '2', tableIds: [T1] }))).toEqual({ error: mapDbError(undefined) });
+    expect(log).toHaveBeenCalledTimes(2);
+    expect(redirect).not.toHaveBeenCalled();
+    log.mockRestore();
+  });
+
+  it('un error de BD desconocido se registra; uno conocido no', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'relation "x" does not exist' } });
+    expect(await changeReservationStatus(R, ID, 'seated')).toEqual({ error: mapDbError(undefined) });
+    expect(log).toHaveBeenCalledTimes(1);
+    rpc.mockResolvedValueOnce({ data: null, error: { message: 'INVALID_TRANSITION' } });
+    await changeReservationStatus(R, ID, 'seated');
+    expect(log).toHaveBeenCalledTimes(1);
+    log.mockRestore();
+  });
+});
+
+it('updateReservation: un id que no es uuid devuelve INVALID_INPUT sin llegar a la BD', async () => {
+  expect(await updateReservation({}, form({ ...phoneForm, reservationId: 'no-es-uuid' }))).toEqual({ error: mapDbError('INVALID_INPUT') });
+  expect(rpc).not.toHaveBeenCalled();
+});
+
+it('createWalkIn: llama a create_walk_in con las mesas sin repetir y vuelve a la vista del día', async () => {
+  const result = await createWalkIn({}, form({ restaurantId: R, partySize: '3', tableIds: [T1, T1], name: 'Luis' }));
+  expect(result).toEqual({ success: 'Sentados.' });
+  expect(rpc).toHaveBeenCalledWith('create_walk_in', {
+    p_restaurant_id: R,
+    p_party_size: 3,
+    p_table_ids: [T1],
+    p_duration_min: null,
+    p_customer_name: 'Luis',
+  });
+  expect(redirect).toHaveBeenCalledWith(`/panel/${R}/reservas?aviso=walk-in`);
+});
+
+describe('lookupCustomer', () => {
+  const maybeSingle = vi.fn();
+  const eq = vi.fn();
+  const chain = { select: vi.fn(), eq, maybeSingle };
+  chain.select.mockReturnValue(chain);
+  eq.mockReturnValue(chain);
+  const from = vi.fn(() => chain);
+
+  beforeEach(() => {
+    from.mockClear();
+    eq.mockClear();
+    maybeSingle.mockReset();
+    vi.mocked(createClient).mockResolvedValue({ from } as never);
+  });
+
+  it('filtra por restaurante y teléfono E.164, y devuelve el cliente con sus avisos', async () => {
+    maybeSingle.mockResolvedValue({
+      data: { id: ID, name: 'Ana', phone: '+34612345678', email: null, tags: ['vip', 'otra'], visits_count: 3, no_show_count: 0, cancel_count: 0 },
+      error: null,
+    });
+    const result = await lookupCustomer(R, '612 34 56 78');
+    expect(requirePermission).toHaveBeenCalledWith(R, 'reservations.manage');
+    expect(from).toHaveBeenCalledWith('customers');
+    expect(eq).toHaveBeenCalledWith('restaurant_id', R);
+    expect(eq).toHaveBeenCalledWith('phone', '+34612345678');
+    expect(result.customer?.name).toBe('Ana');
+    expect(result.error).toBeUndefined();
+  });
+
+  it('un teléfono que no se puede normalizar devuelve null sin consultar', async () => {
+    expect(await lookupCustomer(R, '12')).toEqual({ customer: null });
+    expect(from).not.toHaveBeenCalled();
+    expect(requirePermission).not.toHaveBeenCalled();
+  });
+
+  it('un error de BD se registra y no expone message', async () => {
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
+    maybeSingle.mockResolvedValue({ data: null, error: { message: 'secreto interno de postgres' } });
+    const result = await lookupCustomer(R, '612345678');
+    expect(result).toEqual({ customer: null, error: mapDbError(undefined) });
+    expect(JSON.stringify(result)).not.toContain('secreto');
+    expect(log).toHaveBeenCalledTimes(1);
+    log.mockRestore();
   });
 });
