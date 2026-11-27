@@ -257,7 +257,7 @@ end $$;
 
 /**
  * Cambia hora, personas, duración, mesas y notas de una reserva activa. Si cambian la hora o las mesas, se vuelve a
- * comprobar el hueco (sin contar la propia reserva). Mesas: igual que al crear (p_table_ids = las que quieras dejar).
+ * comprobar el hueco (sin contar la propia reserva). Mesas: igual que al crear (p_table_ids = las que quieras dejar; array vacío con p_force = false: sin mesa).
  */
 create or replace function public.update_panel_reservation(
   p_restaurant_id uuid, p_reservation_id uuid, p_starts_at timestamptz, p_duration_min integer, p_party_size integer,
@@ -296,16 +296,20 @@ begin
          where t.id = any (v_current) and t.restaurant_id = p_restaurant_id) < p_party_size then
       raise exception 'TABLE_TOO_SMALL' using errcode = 'P0001';
     end if;
+  elsif not coalesce(p_force, false) and p_table_ids is not null and cardinality(p_table_ids) = 0 then
+    -- Array vacío explícito (p. ej., editar una reserva forzada sin mesa): se queda sin mesa, igual que al forzar.
+    v_tables := '{}';
   else
     v_tables := public.resolve_reservation_tables(p_restaurant_id, p_party_size, p_starts_at, v_ends, p_table_ids, p_force,
                                                   r.id, v_current);
   end if;
   begin
+    -- Primero se sueltan las mesas que se van: si no, el trigger las movería a la hora nueva y chocarían con otras.
+    delete from public.reservation_tables rt where rt.reservation_id = r.id and not (rt.table_id = any (v_tables));
     update public.reservations
        set starts_at = p_starts_at, ends_at = v_ends, party_size = p_party_size,
            notes = nullif(btrim(p_notes), ''), internal_notes = nullif(btrim(p_internal_notes), '')
      where id = r.id;
-    delete from public.reservation_tables rt where rt.reservation_id = r.id and not (rt.table_id = any (v_tables));
     insert into public.reservation_tables (reservation_id, table_id, restaurant_id)
     select r.id, t, p_restaurant_id from unnest(v_tables) t
      where not (t = any (v_current));

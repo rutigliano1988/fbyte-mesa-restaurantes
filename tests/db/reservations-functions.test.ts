@@ -274,6 +274,88 @@ describe('update_panel_reservation', () => {
     }));
 });
 
+describe('update_panel_reservation: cambiar hora y mesa a la vez', () => {
+  // R en T1 a las 19:00, X en T1 a las 21:00 y T2 libre: R pasa a las 21:00 dejando T1.
+  const LATE = '2030-06-14T21:00:00Z';
+  async function scenario(c: pg.PoolClient) {
+    const s = await setup(c);
+    await as(c, s.admin);
+    const r = await create(c, s.a, { party: 2, tables: [s.t.T1] });
+    await insertReservation(c, s.a, { startsAt: LATE, tableIds: [s.t.T1] });
+    await as(c, s.admin);
+    return { ...s, r };
+  }
+
+  it('con las mesas elegidas: la reserva se va a T2 sin falso choque con T1', () =>
+    tx(async (c) => {
+      const { a, t, r } = await scenario(c);
+      await c.query(UPDATE, [a, r.id, LATE, 90, 2, [t.T2], false, null, null]);
+      const row = await reservation(c, r.id);
+      expect(row.table_ids).toEqual([t.T2]);
+      expect(row.starts_at).toEqual(new Date(LATE));
+    }));
+
+  it('forzando: se queda sin mesa a la hora nueva', () =>
+    tx(async (c) => {
+      const { a, r } = await scenario(c);
+      await c.query(UPDATE, [a, r.id, LATE, 90, 2, null, true, null, null]);
+      const row = await reservation(c, r.id);
+      expect(row.table_ids).toEqual([]);
+      expect(row.starts_at).toEqual(new Date(LATE));
+    }));
+
+  it('con mesa propuesta: la propuesta es T2 y se mueve sin falso choque', () =>
+    tx(async (c) => {
+      const { a, t, r } = await scenario(c);
+      await c.query(UPDATE, [a, r.id, LATE, 90, 2, null, false, null, null]);
+      expect((await reservation(c, r.id)).table_ids).toEqual([t.T2]);
+    }));
+
+  it('reserva forzada sin mesa: cambiar solo las notas con un array vacío la deja sin mesa y sin error', () =>
+    tx(async (c) => {
+      const { a, admin, t } = await setup(c);
+      await as(c, admin);
+      for (const id of [t.T1, t.T2, t.S1, t.S2]) await insertReservation(c, a, { startsAt: NIGHT, tableIds: [id] });
+      await as(c, admin);
+      const forced = await create(c, a, { party: 2, force: true });
+      expect(forced.table_ids).toEqual([]);
+      await as(c, admin);
+      await c.query(UPDATE, [a, forced.id, NIGHT, 90, 2, [], false, 'Solo notas', null]);
+      const row = await reservation(c, forced.id);
+      expect(row.table_ids).toEqual([]);
+      expect(row.notes).toBe('Solo notas');
+    }));
+});
+
+describe('bloqueo de mesas fuera del día simple', () => {
+  it('una reserva que cruza la medianoche (Madrid) choca con otra a las 00:15 en la misma mesa', () =>
+    tx(async (c) => {
+      const { a, admin, t } = await setup(c);
+      await as(c, admin);
+      // 23:30–01:00 hora de Madrid (UTC+2 en junio)
+      await create(c, a, { startsAt: '2030-06-14T21:30:00Z', duration: 90, tables: [t.T1] });
+      await as(c, admin);
+      await expectDbError(
+        c,
+        CREATE,
+        createArgs(a, { startsAt: '2030-06-14T22:15:00Z', duration: 60, tables: [t.T1], phone: '+34600000002' }),
+        /SLOT_TAKEN/,
+      );
+    }));
+
+  it('mover una reserva a otro día funciona y libera la mesa del día anterior', () =>
+    tx(async (c) => {
+      const { a, admin, t } = await setup(c);
+      await as(c, admin);
+      const r = await create(c, a, { tables: [t.T1] });
+      await c.query(UPDATE, [a, r.id, '2030-06-15T19:00:00Z', 90, 2, [t.T1], false, null, null]);
+      expect((await reservation(c, r.id)).starts_at).toEqual(new Date('2030-06-15T19:00:00Z'));
+      await as(c, admin);
+      const again = await create(c, a, { tables: [t.T1], phone: '+34600000002' });
+      expect(again.table_ids).toEqual([t.T1]);
+    }));
+});
+
 describe('estados, contadores y deshacer', () => {
   it('solo deja los cambios de estado permitidos', () =>
     tx(async (c) => {
