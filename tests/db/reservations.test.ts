@@ -317,11 +317,7 @@ describe('privilegios del Hito 4A', () => {
         'public.get_booking_day(uuid, timestamptz, timestamptz)',
         'public.valid_duration_rules(jsonb)',
       ]) {
-        // Las funciones de la migración 20261127000200 aún no existen en la Task 1: to_regprocedure da null y no falla.
-        const { rows } = await c.query(
-          "select case when to_regprocedure($1) is null then false else has_function_privilege('anon', $1, 'execute') end as ok",
-          [fn],
-        );
+        const { rows } = await c.query("select has_function_privilege('anon', $1, 'execute') as ok", [fn]);
         expect(rows[0].ok, fn).toBe(false);
       }
     }));
@@ -342,10 +338,7 @@ describe('privilegios del Hito 4A', () => {
           'public.resolve_reservation_tables(uuid, integer, timestamptz, timestamptz, uuid[], boolean, uuid, uuid[])',
           'public.upsert_customer(uuid, text, text, text)',
         ]) {
-          const { rows } = await c.query(
-            "select case when to_regprocedure($2) is null then false else has_function_privilege($1, $2, 'execute') end as ok",
-            [role, fn],
-          );
+          const { rows } = await c.query("select has_function_privilege($1, $2, 'execute') as ok", [role, fn]);
           expect(rows[0].ok, `${role} → ${fn}`).toBe(false);
         }
       }
