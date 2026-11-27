@@ -44,7 +44,7 @@ export function dragAnnouncements(label: (id: string) => string, order: readonly
 
 /** Lo que se anuncia tras Subir/Bajar (position empieza en 1). */
 export function moveAnnouncement(name: string, position: number, total: number): string {
-  return `“${name}” pasa a la posición ${position} de ${total}.`;
+  return `«${name}» pasa a la posición ${position} de ${total}.`;
 }
 
 export const GENERIC_ERROR = 'Algo ha fallado. Vuelve a intentarlo en un momento.';

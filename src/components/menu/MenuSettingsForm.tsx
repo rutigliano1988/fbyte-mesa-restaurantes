@@ -1,11 +1,12 @@
-import { ActionForm, FormCheckbox, FormCheckboxGroup, FormField, FormSelect } from '@/components/forms/ActionForm';
+import { ActionForm, FormCheckbox, FormField, FormSelect } from '@/components/forms/ActionForm';
 import { createMenu, updateMenu } from '@/lib/actions/menu';
 import type { Locale } from '@/lib/i18n/locales';
 import { MENU_KIND_LABELS_ES, MENU_KINDS } from '@/lib/menu/codes';
 import { centsToInput } from '@/lib/menu/price';
 import type { PanelMenu } from '@/lib/menu/tree';
-import { minutesToTime, WEEKDAY_LABELS_ES, WEEKDAYS } from '@/lib/schedule';
+import { minutesToTime } from '@/lib/schedule';
 import { I18nFields } from './I18nFields';
+import { MenuWeekdays } from './MenuWeekdays';
 
 /**
  * Datos de una carta: nombre por idioma, si se ve en la web y, en el menú del día y el especial, precio cerrado,
@@ -73,15 +74,7 @@ export function MenuSettingsForm({
           ) : (
             <I18nFields prefix="includes" label="Incluye (opcional)" enabled={enabled} values={menu.includes} maxLength={300} idPrefix={idPrefix} />
           )}
-          <FormCheckboxGroup
-            legend="Días"
-            name="weekdays"
-            options={WEEKDAYS.map((d) => ({
-              value: String(d),
-              label: WEEKDAY_LABELS_ES[d],
-              defaultChecked: menu ? (menu.weekdays ?? []).includes(d) : d <= 5,
-            }))}
-          />
+          <MenuWeekdays kind={menu?.kind ?? 'carta'} saved={menu ? (menu.weekdays ?? []) : null} />
           <div className="grid gap-4 sm:grid-cols-2">
             <FormField
               id={`${idPrefix}-start`}

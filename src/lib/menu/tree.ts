@@ -191,7 +191,7 @@ export function unavailableGroups(tree: MenuTree): { id: string; title: string; 
   return groups;
 }
 
-const UNITS_ES = { perKg: '/kg', per100g: '/100 g', market: 'S/M' };
+const UNITS_ES = { perKg: '/kg', per100g: '/100\u00a0g', market: 'S/M' };
 
 /** '9,00 € (Media) · 15,00 € (Ración)', 'S/M' o 'Sin precio'. */
 export function pricesSummaryEs(prices: PanelDishPrice[]): string {

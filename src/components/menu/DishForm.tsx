@@ -39,7 +39,7 @@ export function DishForm({
         maxLength={500}
         multiline
         idPrefix={idPrefix}
-        hint="Ingredientes o cómo lo preparáis. Como mucho 500 caracteres."
+        hint="Ingredientes o cómo lo preparas. Como mucho 500 caracteres."
       />
 
       <fieldset className="flex flex-col gap-4 rounded-[6px] border-2 border-ink/10 p-4">

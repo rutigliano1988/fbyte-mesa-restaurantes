@@ -9,7 +9,8 @@ describe('iconos de alérgenos', () => {
     for (const allergen of ALLERGENS) {
       const html = renderToStaticMarkup(<AllergenIcon allergen={allergen} />);
       expect(html, allergen).toMatch(/^<svg[^>]*aria-hidden="true"/);
-      expect(html, allergen).toMatch(/<(path|circle|rect|text)\b/);
+      expect(html, allergen).toMatch(/<(path|circle|rect)\b/);
+      expect(html, `${allergen}: solo trazos, sin texto`).not.toMatch(/<text\b/);
       drawings.add(html);
     }
     expect(drawings.size).toBe(14);

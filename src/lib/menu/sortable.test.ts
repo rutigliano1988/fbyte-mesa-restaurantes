@@ -26,6 +26,6 @@ describe('ordenar listas', () => {
   });
 
   it('moveAnnouncement dice el nombre y la nueva posición', () => {
-    expect(moveAnnouncement('Postres', 1, 3)).toBe('“Postres” pasa a la posición 1 de 3.');
+    expect(moveAnnouncement('Postres', 1, 3)).toBe('«Postres» pasa a la posición 1 de 3.');
   });
 });

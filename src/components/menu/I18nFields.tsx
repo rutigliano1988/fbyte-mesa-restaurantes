@@ -38,6 +38,7 @@ export function I18nFields({
           id: `${idPrefix}-${name}`,
           label: enabled.length > 1 ? `${label} (${LOCALE_LABELS_ES[locale]})` : label,
           name,
+          lang: locale,
           defaultValue: value,
           maxLength,
           required: required && locale === 'es',

@@ -23,6 +23,14 @@ const NO_SUCH_DATE = 'Esa fecha no existe.';
 const BAD_TIME = 'Escribe la hora así: 13:30.';
 const BAD_RANGE = 'Revisa las horas: tiene que acabar después de empezar y, como mucho, a las 06:00 del día siguiente.';
 
+/** Días ISO (1 = lunes … 7 = domingo) que caen entre dos fechas AAAA-MM-DD, las dos incluidas. */
+function weekdaysBetween(from: string, to: string): Set<number> {
+  const start = Date.parse(`${from}T00:00:00Z`);
+  const days = new Set<number>();
+  for (let i = 0; i <= Math.min(daysBetween(from, to), 6); i++) days.add(((new Date(start + i * 86_400_000).getUTCDay() + 6) % 7) + 1);
+  return days;
+}
+
 type Issue = { code: 'custom'; path: string[]; message: string };
 type Ctx = { addIssue: (issue: Issue) => void };
 
@@ -148,6 +156,12 @@ export const menuFormSchema = z
       t.ctx.addIssue({ code: 'custom', path: ['dateFrom'], message: 'Elige también la fecha de inicio.' });
     } else if (v.kind === 'special') {
       t.ctx.addIssue({ code: 'custom', path: ['dateFrom'], message: 'Elige las fechas del menú especial.' });
+    }
+    if (dateFrom && dateTo && weekdays.length > 0) {
+      const inRange = weekdaysBetween(dateFrom, dateTo);
+      if (!weekdays.some((d) => inRange.has(d))) {
+        t.ctx.addIssue({ code: 'custom', path: ['weekdays'], message: 'Ninguno de los días que has elegido cae entre esas fechas.' });
+      }
     }
 
     if (t.failed()) return z.NEVER;

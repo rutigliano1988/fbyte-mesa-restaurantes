@@ -93,6 +93,24 @@ describe('formulario de carta', () => {
       errors(menuFormSchema.safeParse(readMenuForm(form([...base, ['dateFrom', '2026-12-24'], ['dateTo', '2026-12-20']])))),
     ).toEqual({ dateTo: 'La fecha final no puede ser anterior a la inicial.' });
   });
+
+  it('con fechas, al menos uno de los días elegidos tiene que caer entre ellas (incluidas)', () => {
+    const special = (weekdays: string[], from: string, to: string) =>
+      menuFormSchema.safeParse(
+        readMenuForm(form([['kind', 'special'], ['name_es', 'Navidad'], ['price', '45'], ['dateFrom', from], ['dateTo', to], ...weekdays.map((d): [string, string] => ['weekdays', d])])),
+      );
+    const NONE = { weekdays: 'Ninguno de los días que has elegido cae entre esas fechas.' };
+    // 24/12/2026 es jueves (4) y 25/12/2026, viernes (5).
+    expect(errors(special(['1'], '2026-12-24', '2026-12-25'))).toEqual(NONE);
+    expect(errors(special(['6', '7'], '2026-12-24', '2026-12-24'))).toEqual(NONE);
+    expect(special(['5'], '2026-12-24', '2026-12-25').success).toBe(true);
+    expect(special(['1'], '2026-12-24', '2026-12-28').success).toBe(true);
+    expect(special(['3'], '2026-12-01', '2026-12-31').success).toBe(true);
+    const daily = menuFormSchema.safeParse(
+      readMenuForm(form([['kind', 'daily'], ['name_es', 'Menú'], ['price', '15'], ['weekdays', '7'], ['dateFrom', '2026-12-21'], ['dateTo', '2026-12-25']])),
+    );
+    expect(errors(daily)).toEqual(NONE);
+  });
 });
 
 describe('formulario de plato', () => {

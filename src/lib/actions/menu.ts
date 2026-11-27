@@ -237,19 +237,20 @@ const REORDER = {
   items: { fn: 'reorder_items', param: 'p_section_id' },
 } as const;
 
-/** Guarda el orden completo de una lista. parentId: el restaurante, la carta o la sección. */
+/** Guarda el orden completo de una lista. parentId: la carta o la sección (las cartas, siempre en restaurantId). */
 export async function reorderMenuEntries(
   restaurantId: string,
   entity: ReorderEntity,
   parentId: string,
   ids: string[],
 ): Promise<FormState> {
-  if (!(entity in REORDER) || !isUuid(parentId) || !Array.isArray(ids) || !ids.every(isUuid)) {
+  const parent = entity === 'menus' ? restaurantId : parentId;
+  if (!Object.hasOwn(REORDER, entity) || !isUuid(parent) || !Array.isArray(ids) || !ids.every(isUuid)) {
     return { error: mapDbError('INVALID_INPUT') };
   }
   const { fn, param } = REORDER[entity];
   return runPanelAction(restaurantId, 'menu.edit', async (supabase) => {
-    const { error } = await supabase.rpc(fn, { [param]: parentId, p_ids: ids });
+    const { error } = await supabase.rpc(fn, { [param]: parent, p_ids: ids });
     return error ? { error: mapDbError(error.message) } : { success: 'Orden guardado.' };
   });
 }

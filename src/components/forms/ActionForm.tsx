@@ -168,16 +168,19 @@ export function FormCheckboxGroup({
   legend,
   name,
   options,
+  hint,
 }: {
   legend: string;
   name: string;
   options: { value: string; label: string; defaultChecked?: boolean; disabled?: boolean }[];
+  hint?: string;
 }) {
   const { state } = useActionForm();
   const errId = `f-${name}-err`;
+  const hintId = `f-${name}-hint`;
   const invalid = !!state.fieldErrors?.[name];
   return (
-    <fieldset className="flex flex-col gap-2" aria-invalid={invalid} aria-describedby={invalid ? errId : undefined}>
+    <fieldset className="flex flex-col gap-2" aria-invalid={invalid} aria-describedby={invalid ? errId : hint ? hintId : undefined}>
       <legend className="mb-1 text-sm font-bold">{legend}</legend>
       <div className="flex flex-wrap gap-x-5 gap-y-2">
         {options.map((o) => (
@@ -194,6 +197,11 @@ export function FormCheckboxGroup({
           </label>
         ))}
       </div>
+      {hint && !invalid && (
+        <p id={hintId} className="text-sm text-muted">
+          {hint}
+        </p>
+      )}
       <FormFieldError name={name} id={errId} />
     </fieldset>
   );

@@ -91,14 +91,13 @@ const ICONS: Record<Allergen, ReactNode> = {
       <path d="M10.5 13c2 2 2 5 0 7-2-2-2-5 0-7z" />
     </>
   ),
-  // Copa de vino y «SO₂»
+  // Copa de vino con burbujas
   sulphites: (
     <>
-      <path d="M4.5 3h7l-.6 4.6a2.9 2.9 0 0 1-5.8 0z" />
-      <path d="M8 10.5V17M5.5 17h5" />
-      <text x="12.5" y="21" fill="currentColor" stroke="none" fontSize="6.5" fontWeight="700" fontFamily="inherit">
-        SO₂
-      </text>
+      <path d="M7 3h10l-.8 5.6a4.2 4.2 0 0 1-8.4 0z" />
+      <path d="M12 12.8V20.5M8.5 20.5h7" />
+      <circle cx="10.8" cy="7.2" r=".6" />
+      <circle cx="13.4" cy="5.6" r=".6" />
     </>
   ),
   // Flor de altramuz

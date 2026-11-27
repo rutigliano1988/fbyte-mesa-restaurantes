@@ -119,6 +119,7 @@ describe('árbol del menú para el panel', () => {
     expect(pricesSummaryEs(t.dishes[1].prices)).toBe('9,00 € (Media) · 15,00 € (Ración)');
     expect(pricesSummaryEs([{ kind: 'market', priceCents: null, labels: {} }])).toBe('S/M');
     expect(pricesSummaryEs([{ kind: 'per_kg', priceCents: 4500, labels: {} }])).toBe('45,00 €/kg');
+    expect(pricesSummaryEs([{ kind: 'per_100g', priceCents: 600, labels: {} }])).toBe('6,00\u00a0€/100\u00a0g');
     expect(pricesSummaryEs([])).toBe('Sin precio');
   });
 });
