@@ -173,6 +173,17 @@ describe('duplicate_dish', () => {
         await expectDbError(c, 'select public.duplicate_dish($1, null)', [dish], /FORBIDDEN/);
       }
     }));
+
+  it('con una sección de otro restaurante → FORBIDDEN (y no deja la copia)', () =>
+    tx(async (c) => {
+      const { a, b, admin } = await setup(c);
+      const dish = await insertDish(c, a);
+      const sectionB = await insertSection(c, b, await insertMenu(c, b));
+      await addMember(c, b, admin.id, 'admin');
+      await as(c, admin);
+      await expectDbError(c, 'select public.duplicate_dish($1, $2)', [dish, sectionB], /FORBIDDEN/);
+      expect((await c.query('select 1 from public.dishes where restaurant_id = $1', [a])).rowCount).toBe(1);
+    }));
 });
 
 describe('orden', () => {

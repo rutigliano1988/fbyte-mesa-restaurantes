@@ -10,7 +10,8 @@ alter table public.restaurants
   add column menu_unavailable_mode public.menu_unavailable_mode not null default 'strike';
 
 /**
- * Texto por idioma: objeto con idiomas conocidos y textos de 1 a p_max caracteres (sin contar espacios de los extremos).
+ * Texto por idioma: objeto con idiomas conocidos y textos de 1 a p_max caracteres (sin contar los espacios, tabuladores,
+ * saltos de línea ni espacios duros de los extremos).
  * Con p_required, el castellano es obligatorio. La usan las restricciones CHECK: la ejecuta quien inserta.
  */
 create or replace function public.valid_i18n(p_value jsonb, p_max integer, p_required boolean) returns boolean
@@ -22,7 +23,7 @@ language sql immutable set search_path = '' as $$
       select 1 from jsonb_each(p_value) e
       where e.key not in ('es', 'en', 'ca', 'fr', 'de', 'it')
          or jsonb_typeof(e.value) <> 'string'
-         or length(trim(e.value #>> '{}')) not between 1 and p_max
+         or length(btrim(e.value #>> '{}', E' \t\r\n\u00a0')) not between 1 and p_max
     )
   end
 $$;
@@ -83,6 +84,7 @@ create table public.menu_sections (
   foreign key (menu_id, restaurant_id) references public.menus (id, restaurant_id) on delete cascade
 );
 create index menu_sections_menu_idx on public.menu_sections (menu_id, position);
+create index menu_sections_restaurant_idx on public.menu_sections (restaurant_id);
 create trigger menu_sections_updated_at before update on public.menu_sections
   for each row execute function public.set_updated_at();
 
@@ -134,6 +136,7 @@ create table public.dish_prices (
   )
 );
 create index dish_prices_dish_idx on public.dish_prices (dish_id, position);
+create index dish_prices_restaurant_idx on public.dish_prices (restaurant_id);
 create trigger dish_prices_updated_at before update on public.dish_prices
   for each row execute function public.set_updated_at();
 
@@ -161,11 +164,15 @@ create table public.menu_items (
 );
 create index menu_items_section_idx on public.menu_items (section_id, position);
 create index menu_items_dish_idx on public.menu_items (dish_id);
+create index menu_items_menu_idx on public.menu_items (menu_id);
+create index menu_items_restaurant_idx on public.menu_items (restaurant_id);
 create unique index menu_items_menu_dish_key on public.menu_items (menu_id, dish_id) where dish_id is not null;
 create trigger menu_items_updated_at before update on public.menu_items
   for each row execute function public.set_updated_at();
 
 -- Límites (con bloqueo, para que dos altas a la vez no se cuelen) ------------------------------------------------
+-- Los triggers son SECURITY DEFINER: la fila padre se busca también por restaurant_id, para que no lean ni bloqueen
+-- piezas de otro restaurante (si no está en el mismo restaurante, FORBIDDEN).
 create or replace function public.limit_menu_rows() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
@@ -175,7 +182,10 @@ begin
       raise exception 'MENU_LIMIT' using errcode = 'P0001';
     end if;
   elsif tg_table_name = 'menu_sections' then
-    perform 1 from public.menus m where m.id = new.menu_id for no key update;
+    perform 1 from public.menus m where m.id = new.menu_id and m.restaurant_id = new.restaurant_id for no key update;
+    if not found then
+      raise exception 'FORBIDDEN' using errcode = '42501';
+    end if;
     if (select count(*) from public.menu_sections s where s.menu_id = new.menu_id) >= 40 then
       raise exception 'SECTION_LIMIT' using errcode = 'P0001';
     end if;
@@ -198,7 +208,10 @@ create trigger dishes_limit before insert on public.dishes
 create or replace function public.check_dish_prices() returns trigger
 language plpgsql security definer set search_path = '' as $$
 begin
-  perform 1 from public.dishes d where d.id = new.dish_id for no key update;
+  perform 1 from public.dishes d where d.id = new.dish_id and d.restaurant_id = new.restaurant_id for no key update;
+  if not found then
+    raise exception 'FORBIDDEN' using errcode = '42501';
+  end if;
   if (select count(*) from public.dish_prices p where p.dish_id = new.dish_id and p.id <> new.id) >= 4 then
     raise exception 'PRICE_LIMIT' using errcode = 'P0001';
   end if;
@@ -224,11 +237,14 @@ declare
 begin
   select s.menu_id, m.kind into new.menu_id, v_kind
     from public.menu_sections s join public.menus m on m.id = s.menu_id
-   where s.id = new.section_id;
+   where s.id = new.section_id and s.restaurant_id = new.restaurant_id;
+  if not found then
+    raise exception 'FORBIDDEN' using errcode = '42501';
+  end if;
   if new.inline_names is not null and v_kind = 'carta' then
     raise exception 'INLINE_ONLY_DAILY' using errcode = 'P0001';
   end if;
-  perform 1 from public.menu_sections s where s.id = new.section_id for no key update;
+  perform 1 from public.menu_sections s where s.id = new.section_id and s.restaurant_id = new.restaurant_id for no key update;
   if (select count(*) from public.menu_items i where i.section_id = new.section_id) >= 100 then
     raise exception 'ITEM_LIMIT' using errcode = 'P0001';
   end if;

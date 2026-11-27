@@ -133,11 +133,23 @@ describe('menú: restricciones', () => {
       const { a } = await setup(c);
       await asSuperuser(c);
       const sql = 'insert into public.dishes (restaurant_id, names, descriptions) values ($1, $2, $3)';
-      for (const names of [{}, { en: 'Croquettes' }, { es: 'Croquetas', xx: 'Hmm' }, { es: '   ' }, { es: 'x'.repeat(121) }, { es: 1 }, []]) {
+      for (const names of [
+        {},
+        { en: 'Croquettes' },
+        { es: 'Croquetas', xx: 'Hmm' },
+        { es: '   ' },
+        { es: ' \n\t\r\u00a0 ' },
+        { es: 'x'.repeat(121) },
+        { es: `\n${'x'.repeat(121)}\u00a0` },
+        { es: 1 },
+        [],
+      ]) {
         await expectDbError(c, sql, [a, json(names), json({})], /dishes_names_check/);
       }
       await expectDbError(c, sql, [a, json({ es: 'Croquetas' }), json({ es: 'x'.repeat(501) })], /dishes_descriptions_check/);
       expect((await c.query(sql, [a, json({ es: 'Croquetas', en: 'Croquettes' }), json({ es: 'De jamón.' })])).rowCount).toBe(1);
+      // Los saltos de línea, tabuladores y espacios duros de los extremos no cuentan para la longitud.
+      expect((await c.query(sql, [a, json({ es: `\n\t${'x'.repeat(120)}\u00a0\r\n` }), json({})])).rowCount).toBe(1);
       await expectDbError(
         c,
         "insert into public.menu_sections (restaurant_id, menu_id, names) values ($1, $2, $3)",
@@ -291,7 +303,7 @@ describe('menú: restricciones', () => {
       expect(inline.rows[0].menu_id).toBe(daily);
     }));
 
-  it('no se mezclan restaurantes: cada pieza solo apunta a piezas de su restaurante', () =>
+  it('no se mezclan restaurantes: cada pieza solo apunta a piezas de su restaurante (FORBIDDEN si la carta, la sección o el plato son de otro)', () =>
     tx(async (c) => {
       const { a, b } = await setup(c);
       const menuB = await insertMenu(c, b);
@@ -301,10 +313,11 @@ describe('menú: restricciones', () => {
       const sectionA = await insertSection(c, a, menuA);
       const dishA = await insertDish(c, a);
       await asSuperuser(c);
-      await expectDbError(c, 'insert into public.menu_sections (restaurant_id, menu_id, names) values ($1, $2, $3)', [a, menuB, json({ es: 'X' })], /foreign key/);
-      await expectDbError(c, "insert into public.dish_prices (restaurant_id, dish_id, kind, price_cents) values ($1, $2, 'fixed', 100)", [a, dishB], /foreign key/);
+      await expectDbError(c, 'insert into public.menu_sections (restaurant_id, menu_id, names) values ($1, $2, $3)', [a, menuB, json({ es: 'X' })], /FORBIDDEN/);
+      await expectDbError(c, "insert into public.dish_prices (restaurant_id, dish_id, kind, price_cents) values ($1, $2, 'fixed', 100)", [a, dishB], /FORBIDDEN/);
       await expectDbError(c, 'insert into public.menu_items (restaurant_id, section_id, dish_id) values ($1, $2, $3)', [a, sectionA, dishB], /foreign key/);
-      await expectDbError(c, 'insert into public.menu_items (restaurant_id, section_id, dish_id) values ($1, $2, $3)', [a, sectionB, dishA], /foreign key/);
+      await expectDbError(c, 'insert into public.menu_items (restaurant_id, section_id, dish_id) values ($1, $2, $3)', [a, sectionB, dishA], /FORBIDDEN/);
+      await expectDbError(c, 'insert into public.menu_items (restaurant_id, section_id, inline_names) values ($1, $2, $3)', [a, sectionB, json({ es: 'X' })], /FORBIDDEN/);
     }));
 
   it('la foto del plato solo puede estar en la carpeta dishes/ de su restaurante', () =>
@@ -335,6 +348,20 @@ describe('menú: restricciones', () => {
       expect((await c.query('select 1 from public.menu_sections where menu_id = $1', [menu])).rowCount).toBe(0);
       expect((await c.query('select 1 from public.menu_items where menu_id = $1', [menu])).rowCount).toBe(0);
       expect((await c.query('select 1 from public.dishes where id = $1', [other])).rowCount).toBe(1);
+    }));
+
+  it('índices para las claves foráneas: menu_id de los elementos y restaurant_id de secciones, precios y elementos', () =>
+    tx(async (c) => {
+      const { rows } = await c.query(
+        "select indexname from pg_indexes where schemaname = 'public' and indexname = any($1) order by indexname",
+        [['dish_prices_restaurant_idx', 'menu_items_menu_idx', 'menu_items_restaurant_idx', 'menu_sections_restaurant_idx']],
+      );
+      expect(rows.map((r) => r.indexname)).toEqual([
+        'dish_prices_restaurant_idx',
+        'menu_items_menu_idx',
+        'menu_items_restaurant_idx',
+        'menu_sections_restaurant_idx',
+      ]);
     }));
 
   it('el modo de agotados es «strike» por defecto y no se cambia con un UPDATE directo', () =>

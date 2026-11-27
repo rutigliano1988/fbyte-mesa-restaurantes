@@ -30,11 +30,12 @@ start() {
 db_url() { echo "${PG_TEST_URL:-postgresql://postgres@127.0.0.1:$PORT/$DB}"; }
 admin_url() { echo "${PG_TEST_ADMIN_URL:-postgresql://postgres@127.0.0.1:$PORT/postgres}"; }
 
+# La base de pruebas, en UTF-8 como en Supabase (initdb sin locale la dejaría en SQL_ASCII).
 reset() {
   start
   psql "$(admin_url)" -q -v ON_ERROR_STOP=1 \
     -c "drop database if exists $DB with (force)" \
-    -c "create database $DB"
+    -c "create database $DB template template0 encoding 'UTF8' locale 'C'"
   psql "$(db_url)" -q -v ON_ERROR_STOP=1 -f "$ROOT/supabase/tests/auth_shim.sql"
   for f in "$ROOT"/supabase/migrations/*.sql; do
     psql "$(db_url)" -q -v ON_ERROR_STOP=1 -f "$f"
