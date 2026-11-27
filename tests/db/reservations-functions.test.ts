@@ -325,6 +325,21 @@ describe('update_panel_reservation: cambiar hora y mesa a la vez', () => {
       expect(row.table_ids).toEqual([]);
       expect(row.notes).toBe('Solo notas');
     }));
+
+  it('reserva con mesa: un array vacío sin forzar no le quita la mesa en silencio (se resuelve como siempre)', () =>
+    tx(async (c) => {
+      const { a, admin, t } = await setup(c);
+      await as(c, admin);
+      const r = await create(c, a, { party: 2, tables: [t.T2] });
+      await c.query(UPDATE, [a, r.id, NIGHT, 90, 2, [], false, null, null]);
+      expect((await reservation(c, r.id)).table_ids).toEqual([t.T1]);
+      // Sin ninguna mesa libre a esa hora, avisa en lugar de dejarla sin mesa.
+      for (const id of [t.T2, t.S1, t.S2]) await insertReservation(c, a, { startsAt: NIGHT, tableIds: [id] });
+      await as(c, admin);
+      const other = await create(c, a, { party: 2, startsAt: '2030-06-14T11:00:00Z', tables: [t.T2] });
+      await expectDbError(c, UPDATE, [a, other.id, NIGHT, 90, 2, [], false, null, null], /NO_TABLE_AVAILABLE/);
+      expect((await reservation(c, other.id)).table_ids).toEqual([t.T2]);
+    }));
 });
 
 describe('bloqueo de mesas fuera del día simple', () => {

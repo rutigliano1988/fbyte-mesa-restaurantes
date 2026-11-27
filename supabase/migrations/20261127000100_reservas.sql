@@ -373,10 +373,11 @@ revoke execute on function public.limit_booking_rows(), public.check_table_delet
 revoke execute on function public.valid_duration_rules(jsonb) from public, anon;
 grant execute on function public.valid_duration_rules(jsonb) to authenticated;
 
--- Tiempo real (Supabase Realtime): solo si existe la publicación (el shim de pruebas no la tiene).
+-- Tiempo real (Supabase Realtime): solo si existe la publicación (el shim de pruebas no la tiene) y no es FOR ALL TABLES
+-- (en ese caso ya las incluye y añadirlas daría error).
 do $$
 begin
-  if exists (select 1 from pg_publication where pubname = 'supabase_realtime') then
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime' and not puballtables) then
     alter publication supabase_realtime add table public.reservations, public.reservation_tables, public.blocks;
   end if;
 end $$;
