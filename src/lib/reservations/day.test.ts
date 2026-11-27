@@ -1,0 +1,112 @@
+import { describe, expect, it } from 'vitest';
+import {
+  effectiveLastBooking,
+  groupByService,
+  resolveMinute,
+  serviceAt,
+  serviceDateOf,
+  servicesForDate,
+  slotMinutes,
+  summarize,
+  type ServiceConfig,
+} from './day';
+import { zonedTimeToUtc } from './time';
+
+const TZ = 'Europe/Madrid';
+// Viernes 2030-06-14: comida 13:00–16:00 (última 15:00 por defecto) y cena 20:30–00:30 con última 23:30 cada 30.
+const services: ServiceConfig[] = [
+  { name: 'Comida', weekday: 5, startMinute: 780, endMinute: 960, lastBookingMinute: null, slotIntervalMin: 15 },
+  { name: 'Cena', weekday: 5, startMinute: 1230, endMinute: 1470, lastBookingMinute: 1410, slotIntervalMin: 30 },
+  { name: 'Cena', weekday: 4, startMinute: 1260, endMinute: 1500, lastBookingMinute: null, slotIntervalMin: 15 },
+];
+
+describe('servicios de una fecha', () => {
+  it('los de su día de la semana, en orden', () => {
+    expect(servicesForDate('2030-06-14', services, []).map((s) => [s.name, s.startMinute, s.lastBookingMinute, s.slotIntervalMin])).toEqual([
+      ['Comida', 780, 900, 15],
+      ['Cena', 1230, 1410, 30],
+    ]);
+  });
+
+  it('un cierre los quita y un horario especial los sustituye (con los valores por defecto)', () => {
+    const closed = [{ dateFrom: '2030-06-10', dateTo: '2030-06-16', kind: 'closed' as const, customServices: [] }];
+    expect(servicesForDate('2030-06-14', services, closed)).toEqual([]);
+    const custom = [{ dateFrom: '2030-06-14', dateTo: '2030-06-14', kind: 'custom' as const, customServices: [{ name: 'Gala', startMinute: 1260, endMinute: 1560 }] }];
+    expect(servicesForDate('2030-06-14', services, custom)).toEqual([
+      { key: '1260', name: 'Gala', startMinute: 1260, endMinute: 1560, lastBookingMinute: 1500, slotIntervalMin: 15 },
+    ]);
+  });
+
+  it('la última hora por defecto no baja del inicio', () => {
+    expect(effectiveLastBooking(780, 810, null)).toBe(780);
+    expect(effectiveLastBooking(780, 960, 930)).toBe(930);
+  });
+
+  it('horas candidatas del inicio a la última, cada intervalo', () => {
+    const [comida, cena] = servicesForDate('2030-06-14', services, []);
+    expect(slotMinutes(comida)).toHaveLength(9);
+    expect(slotMinutes(cena)).toEqual([1230, 1260, 1290, 1320, 1350, 1380, 1410]);
+  });
+});
+
+describe('hora escrita y servicio que la contiene', () => {
+  const today = servicesForDate('2030-06-14', services, []);
+
+  it('00:15 en un día con cena hasta las 00:30 es de esa noche; 03:00, no', () => {
+    expect(resolveMinute(15, today)).toBe(1455);
+    expect(resolveMinute(180, today)).toBe(180);
+    expect(resolveMinute(1300, today)).toBe(1300);
+  });
+
+  it('serviceAt: inicio incluido, fin excluido', () => {
+    expect(serviceAt(780, today)?.name).toBe('Comida');
+    expect(serviceAt(960, today)).toBeNull();
+  });
+});
+
+describe('reparto de reservas por servicio', () => {
+  const at = (date: string, minute: number) => ({ id: `${date}@${minute}`, startMs: zonedTimeToUtc(date, minute, TZ) });
+  const today = servicesForDate('2030-06-14', services, []);
+  const yesterday = servicesForDate('2030-06-13', services, []);
+
+  it('cada una en su servicio; las de fuera, aparte; la madrugada siguiente cuenta para la cena', () => {
+    const items = [at('2030-06-14', 800), at('2030-06-14', 1320), at('2030-06-15', 10), at('2030-06-14', 1000), at('2030-06-15', 200)];
+    const { groups, outside } = groupByService(items, '2030-06-14', TZ, today, yesterday);
+    expect(groups.map((g) => [g.service.name, g.items.map((i) => i.id)])).toEqual([
+      ['Comida', ['2030-06-14@800']],
+      ['Cena', ['2030-06-14@1320', '2030-06-15@10']],
+    ]);
+    expect(outside.map((i) => i.id)).toEqual(['2030-06-14@1000']);
+  });
+
+  it('la madrugada que es de la cena de la víspera no sale en este día', () => {
+    const { groups, outside } = groupByService([at('2030-06-14', 30)], '2030-06-14', TZ, today, yesterday);
+    expect(groups.every((g) => g.items.length === 0)).toBe(true);
+    expect(outside).toEqual([]);
+  });
+
+  it('un día cerrado: todo sale fuera de horario', () => {
+    const { groups, outside } = groupByService([at('2030-06-14', 800)], '2030-06-14', TZ, [], yesterday);
+    expect(groups).toEqual([]);
+    expect(outside).toHaveLength(1);
+  });
+});
+
+it('resumen: reservas y personas sin canceladas ni no-shows, y pendientes', () => {
+  expect(
+    summarize([
+      { status: 'confirmed', partySize: 2 },
+      { status: 'pending', partySize: 4 },
+      { status: 'completed', partySize: 3 },
+      { status: 'no_show', partySize: 6 },
+      { status: 'cancelled_customer', partySize: 2 },
+    ]),
+  ).toEqual({ reservations: 3, covers: 9, pending: 1 });
+});
+
+it('serviceDateOf: la madrugada de la cena de la víspera es de la víspera', () => {
+  expect(serviceDateOf(zonedTimeToUtc('2030-06-14', 30, TZ), TZ, services, [])).toBe('2030-06-13');
+  expect(serviceDateOf(zonedTimeToUtc('2030-06-15', 10, TZ), TZ, services, [])).toBe('2030-06-14');
+  expect(serviceDateOf(zonedTimeToUtc('2030-06-15', 200, TZ), TZ, services, [])).toBe('2030-06-15');
+  expect(serviceDateOf(zonedTimeToUtc('2030-06-14', 800, TZ), TZ, services, [])).toBe('2030-06-14');
+});
