@@ -6,6 +6,7 @@ import {
   focusTarget,
   freeCellLabel,
   gridColumns,
+  gridTimeText,
   moveFocus,
   reservationBarLabel,
   reservationBarText,
@@ -291,6 +292,9 @@ describe('teclado', () => {
 
 it('nombres accesibles: el de la barra empieza por su texto visible', () => {
   expect(freeCellLabel('T4', 1275)).toBe('Nueva reserva en T4 a las 21:15');
+  expect(freeCellLabel('T4', 1470)).toBe('Nueva reserva en T4 a las 00:30 del día siguiente');
+  expect(gridTimeText(1440)).toBe('00:00 del día siguiente');
+  expect(gridTimeText(1425)).toBe('23:45');
   const r = res('r', ['t4'], 1260, 1350);
   expect(reservationBarText(r)).toBe('García · 4');
   expect(reservationBarLabel(r, 'T4', '21:00–22:30')).toBe('García · 4 personas, T4, 21:00–22:30, Confirmada. Abrir la reserva');

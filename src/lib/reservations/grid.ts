@@ -1,4 +1,4 @@
-import { minutesToTime } from '@/lib/schedule';
+import { MINUTES_PER_DAY, minutesToTime } from '@/lib/schedule';
 import { isActiveStatus, STATUS_LABELS_ES, type ReservationStatus } from './codes';
 import type { BlockSpan, BookingTable } from './availability';
 import type { DayService } from './day';
@@ -185,9 +185,14 @@ export function moveFocus(layout: GridLayout, pos: GridPos, key: string): GridPo
   }
 }
 
-/** Nombre accesible de un hueco: 'Nueva reserva en T4 a las 21:15'. */
+/** Hora de una columna para leerla en voz alta: '21:15'; pasada la medianoche, '00:30 del día siguiente'. */
+export function gridTimeText(minute: number): string {
+  return `${minutesToTime(minute)}${minute >= MINUTES_PER_DAY ? ' del día siguiente' : ''}`;
+}
+
+/** Nombre accesible de un hueco: 'Nueva reserva en T4 a las 21:15' (o '… a las 00:30 del día siguiente'). */
 export function freeCellLabel(tableName: string, minute: number): string {
-  return `Nueva reserva en ${tableName} a las ${minutesToTime(minute)}`;
+  return `Nueva reserva en ${tableName} a las ${gridTimeText(minute)}`;
 }
 
 /** Texto visible de una barra ('García · 4') y su nombre accesible, que empieza por él. */
