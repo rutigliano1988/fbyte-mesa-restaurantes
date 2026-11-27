@@ -5,7 +5,6 @@ import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } f
 import type { BlockSpan, BookingTable } from '@/lib/reservations/availability';
 import { STATUS_LABELS_ES } from '@/lib/reservations/codes';
 import {
-  blockLabel,
   focusTarget,
   freeCellLabel,
   gridTimeText,
@@ -21,7 +20,7 @@ import { formatTime } from '@/lib/reservations/time';
 import { minutesToTime } from '@/lib/schedule';
 
 const BAR = {
-  pending: 'border-orange-dark bg-peach-soft text-ink',
+  pending: 'border-dashed border-orange-dark bg-peach-soft text-ink',
   confirmed: 'border-navy bg-on-navy-soft text-navy-dark',
   seated: 'border-ink bg-ink text-white',
 } as const satisfies Partial<Record<GridReservation['status'], string>>;
@@ -62,6 +61,7 @@ export function ReservationGrid({
 }) {
   const [pos, setPos] = useState<GridPos>({ row: 0, col: 0 });
   const refs = useRef(new Map<string, HTMLElement>());
+  const hadFocus = useRef(false);
   const moved = useRef(false);
   const n = layout.columns.length;
   const template: CSSProperties = { gridTemplateColumns: `7.5rem repeat(${n}, minmax(2.75rem, 1fr))` };
@@ -78,6 +78,14 @@ export function ReservationGrid({
     moved.current = false;
     refs.current.get(targetKey)?.focus();
   }, [targetKey]);
+
+  // Si un cambio en tiempo real desmonta la celda con el foco, el foco cae en <body>: se devuelve a la celda objetivo.
+  useEffect(() => {
+    if (!hadFocus.current || !targetKey) return;
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    refs.current.get(targetKey)?.focus();
+  });
 
   function onKeyDown(e: KeyboardEvent<HTMLDivElement>) {
     const next = moveFocus(layout, pos, e.key);
@@ -131,7 +139,9 @@ export function ReservationGrid({
     if (seg.kind === 'reservation') {
       const r = resById.get(seg.reservationId);
       if (!r) return null;
-      const text = reservationBarLabel(r, tableName, range(r.startMs, r.endMs));
+      // «Pend.» se ve además del color y del borde discontinuo; el nombre accesible empieza por el texto visible.
+      const prefix = r.status === 'pending' ? 'Pend. ' : '';
+      const text = prefix + reservationBarLabel(r, tableName, range(r.startMs, r.endMs));
       return (
         <div key={key} role="gridcell" aria-colspan={seg.span} style={place} className="p-0.5">
           <Link
@@ -141,33 +151,34 @@ export function ReservationGrid({
             title={text}
             className={`block h-11 truncate rounded-[4px] border-2 px-2 text-sm leading-10 font-bold ${barClass(r.status)} ${focusRing}`}
           >
-            {reservationBarText(r)}
+            {prefix + reservationBarText(r)}
           </Link>
         </div>
       );
     }
     const b = blockById.get(seg.blockId);
-    const text = blockLabel(tableName, b ? range(b.startMs, b.endMs) : '', b?.reason ?? null);
+    const visible = b?.reason ? `Bloqueada: ${b.reason}` : 'Bloqueada';
+    const text = `${visible}, ${tableName}${b ? `, ${range(b.startMs, b.endMs)}` : ''}`;
     return (
-      <div key={key} role="gridcell" aria-colspan={seg.span} style={place} className="p-0.5">
-        <span
-          {...common}
-          role="img"
-          aria-label={text}
-          title={text}
-          style={STRIPES}
-          className={`block h-11 truncate rounded-[4px] border-2 border-ink/20 px-2 text-xs leading-10 font-bold text-muted ${focusRing}`}
-        >
-          <span aria-hidden="true">{b?.reason ?? 'Bloqueada'}</span>
-        </span>
+      <div
+        key={key}
+        {...common}
+        role="gridcell"
+        aria-colspan={seg.span}
+        aria-label={text}
+        title={text}
+        style={{ ...place, ...STRIPES }}
+        className={`m-0.5 h-11 truncate rounded-[4px] border-2 border-ink/20 px-2 text-xs leading-10 font-bold text-muted ${focusRing}`}
+      >
+        {visible}
       </div>
     );
   }
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="overflow-x-auto rounded-[6px] border-2 border-ink/10 bg-white">
-        <div role="grid" aria-label={label} aria-rowcount={layout.rows.length + 1} aria-colcount={n + 1} onKeyDown={onKeyDown} className="min-w-max">
+      <div className="scroll-pl-[7.5rem] overflow-x-auto rounded-[6px] border-2 border-ink/10 bg-white">
+        <div role="grid" onFocus={() => (hadFocus.current = true)} onBlur={(e) => { if (!(e.target instanceof Node) || e.target.isConnected) hadFocus.current = false; }} aria-label={label} aria-rowcount={layout.rows.length + 1} aria-colcount={n + 1} onKeyDown={onKeyDown} className="min-w-max">
           <div role="row" style={template} className="grid border-b-2 border-ink/10 text-xs font-bold text-muted">
             <div role="columnheader" className="sticky left-0 z-10 bg-white px-2 py-2">
               Mesa

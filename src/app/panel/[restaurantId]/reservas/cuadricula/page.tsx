@@ -46,11 +46,12 @@ export default async function GridPage({
   }));
   const layout = service ? buildGrid({ date, timeZone: tz, service, tables, reservations, blocks: day.blocks }) : null;
   const readOnly = ctx.readOnly;
+  const canConfigure = can(ctx.role, 'settings.booking');
   const path = `/panel/${restaurantId}/reservas/cuadricula`;
 
   return (
     <div className="flex flex-col gap-6">
-      <ReservationsNav restaurantId={restaurantId} current="cuadricula" date={date} canConfigure={can(ctx.role, 'settings.booking')} />
+      <ReservationsNav restaurantId={restaurantId} current="cuadricula" date={date} canConfigure={canConfigure} />
       <header className="flex flex-col gap-3">
         <DayPicker path={path} date={date} today={today} keep={service ? { servicio: service.key } : {}} />
         {services.length > 1 && (
@@ -76,11 +77,15 @@ export default async function GridPage({
         </p>
       </header>
       {tables.length === 0 ? (
-        <Notice tone="info">Aún no tienes mesas: créalas en Reservas → Ajustes.</Notice>
-      ) : !service || !layout ? (
+        <Notice tone="info">
+          {canConfigure ? 'Aún no tienes mesas: créalas en Reservas → Ajustes.' : 'Aún no hay mesas. Pídele a tu encargado que las cree.'}
+        </Notice>
+      ) : !service || !layout || layout.columns.length === 0 ? (
         <Notice tone="info">Este día no tienes servicios en el horario.</Notice>
       ) : layout.rows.length === 0 ? (
-        <Notice tone="info">Todas tus mesas están desactivadas: actívalas en Reservas → Ajustes.</Notice>
+        <Notice tone="info">
+          {canConfigure ? 'Todas tus mesas están desactivadas: actívalas en Reservas → Ajustes.' : 'Todas las mesas están desactivadas. Pídele a tu encargado que las active.'}
+        </Notice>
       ) : (
         <ReservationGrid
           restaurantId={restaurantId}

@@ -63,10 +63,14 @@ it('un solo punto de tabulación; huecos que abren una reserva en esa mesa y hor
   expect(html).toContain('role="grid"');
   expect(count(html, 'tabindex="0"')).toBe(1);
   // El bloqueo de todo el restaurante se parte en dos tramos en t1 (la reserva manda): los dos se pintan.
-  expect(count(html, 'aria-label="T1 bloqueada')).toBe(2);
-  expect(count(html, 'aria-label="T2 bloqueada')).toBe(1);
+  expect(count(html, 'aria-label="Bloqueada: Evento, T1, ')).toBe(2);
+  expect(count(html, 'aria-label="Bloqueada: Evento, T2, ')).toBe(1);
+  expect(html).not.toContain('role="img"');
   expect(html).toContain(`href="/panel/${R}/reservas/r1"`);
   expect(html).toMatch(/aria-label="García · 4 personas, T1, 21:30–23:00, Confirmada\. Abrir la reserva"[^>]*>García · 4</);
+
+  expect(html).toMatch(/role="gridcell"[^>]*aria-label="Bloqueada: Evento, T2, [^"]*"[^>]*>Bloqueada: Evento</);
+  expect(count(html, 'tabindex="0"')).toBe(1);
 
   const free = render({ service: { startMinute: 1260, endMinute: 1290 }, tables: [t('t1')] }).html;
   expect(free).toContain(`href="/panel/${R}/reservas/nueva?fecha=2030-06-14&amp;hora=21%3A15&amp;mesa=t1"`);
@@ -85,6 +89,9 @@ it('mesa desactivada con reservas y modo soporte: los huecos se ven, pero sin en
   const support = render({ service, tables: [t('t1'), t('t2', false)], reservations: [r], readOnly: true }).html;
   expect(support).not.toContain('/reservas/nueva');
   expect(support).toContain(`href="/panel/${R}/reservas/r2"`);
+  // Pendiente: marca visible «Pend.», borde discontinuo y nombre accesible que empieza por el texto visible.
+  expect(support).toMatch(/aria-label="Pend\. Ruiz · 2 personas[^"]*"[^>]*>Pend\. Ruiz · 2</);
+  expect(support).toContain('border-dashed');
   expect(support).toContain('aria-label="T1, 21:00, libre"');
   expect(count(support, 'tabindex="0"')).toBe(1);
 });
