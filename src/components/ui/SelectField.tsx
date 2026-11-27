@@ -15,14 +15,14 @@ export function SelectField({ label, name, options, error, id, ...select }: Prop
       <label htmlFor={fieldId} className="text-sm font-bold">
         {label}
       </label>
-      <select id={fieldId} name={name} aria-invalid={!!error} className={inputClass} {...select}>
+      <select id={fieldId} name={name} aria-invalid={!!error} aria-describedby={error ? `${fieldId}-err` : undefined} className={inputClass} {...select}>
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}
           </option>
         ))}
       </select>
-      {error && <p className="text-sm font-medium text-red-700">{error}</p>}
+      {error && <p id={`${fieldId}-err`} className="text-sm font-medium text-red-700">{error}</p>}
     </div>
   );
 }

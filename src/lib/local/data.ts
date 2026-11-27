@@ -115,9 +115,12 @@ export async function getRestaurantLocal(restaurantId: string): Promise<Restaura
   };
 }
 
+/** Servicio con la última hora de reserva (null = una hora antes del cierre) y el intervalo (Hito 4A). */
+export type ScheduleService = ServiceSlot & { id: string; lastBookingMinute: number | null; slotIntervalMin: number };
+
 export type RestaurantSchedule = {
   timezone: string;
-  services: (ServiceSlot & { id: string })[];
+  services: ScheduleService[];
   exceptions: (ScheduleException & { id: string })[];
 };
 
@@ -127,7 +130,7 @@ export async function getRestaurantSchedule(restaurantId: string): Promise<Resta
     supabase.from('restaurants').select('timezone').eq('id', restaurantId).single(),
     supabase
       .from('services')
-      .select('id, name, weekday, start_minute, end_minute')
+      .select('id, name, weekday, start_minute, end_minute, last_booking_minute, slot_interval_min')
       .eq('restaurant_id', restaurantId)
       .order('weekday')
       .order('start_minute'),
@@ -150,9 +153,25 @@ export async function getRestaurantSchedule(restaurantId: string): Promise<Resta
   };
   return {
     timezone: (restaurant.data as { timezone: string }).timezone,
-    services: ((services.data ?? []) as { id: string; name: string; weekday: number; start_minute: number; end_minute: number }[]).map(
-      (s) => ({ id: s.id, name: s.name, weekday: s.weekday, startMinute: s.start_minute, endMinute: s.end_minute }),
-    ),
+    services: (
+      (services.data ?? []) as {
+        id: string;
+        name: string;
+        weekday: number;
+        start_minute: number;
+        end_minute: number;
+        last_booking_minute: number | null;
+        slot_interval_min: number;
+      }[]
+    ).map((s) => ({
+      id: s.id,
+      name: s.name,
+      weekday: s.weekday,
+      startMinute: s.start_minute,
+      endMinute: s.end_minute,
+      lastBookingMinute: s.last_booking_minute,
+      slotIntervalMin: s.slot_interval_min,
+    })),
     exceptions: ((exceptions.data ?? []) as ExceptionRow[]).map((e) => ({
       id: e.id,
       dateFrom: e.date_from,

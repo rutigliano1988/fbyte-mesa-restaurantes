@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { ActionForm, FormCheckboxGroup, FormField, FormSelect } from '@/components/forms/ActionForm';
 import { ExceptionItem } from '@/components/schedule/ExceptionItem';
-import { ServiceRow } from '@/components/schedule/ServiceRow';
+import { ServiceRow, SLOT_INTERVAL_OPTIONS } from '@/components/schedule/ServiceRow';
 import { SectionCard } from '@/components/ui/SectionCard';
 import { addException, addServices } from '@/lib/actions/schedule';
 import { requirePanelAccess } from '@/lib/auth/guards';
@@ -23,7 +23,10 @@ export default async function SchedulePage({ params }: { params: Promise<{ resta
     <div className="flex flex-col gap-6">
       <header>
         <h1 className="text-3xl font-extrabold tracking-tight">Horario</h1>
-        <p className="mt-1 text-muted">Tus servicios de cada semana y los días que cierras o abres distinto. Sale tal cual en tu web.</p>
+        <p className="mt-1 text-muted">
+          Tus servicios de cada semana y los días que cierras o abres distinto. Sale tal cual en tu web. La última reserva y cada
+          cuánto se reserva son para el panel de reservas.
+        </p>
       </header>
 
       <SectionCard title="Servicios de cada día" intro="Un día sin servicios sale como cerrado.">
@@ -60,6 +63,8 @@ export default async function SchedulePage({ params }: { params: Promise<{ resta
             <div className="grid gap-4 sm:grid-cols-2">
               <FormField label="Empieza" name="start" type="time" required />
               <FormField label="Acaba" name="end" type="time" required />
+              <FormField label="Última reserva (opcional)" name="lastBooking" type="time" hint="Si la dejas vacía, una hora antes de acabar." />
+              <FormSelect label="Horas de reserva" name="slotInterval" defaultValue="15" options={SLOT_INTERVAL_OPTIONS} />
             </div>
             <FormCheckboxGroup
               legend="Días"

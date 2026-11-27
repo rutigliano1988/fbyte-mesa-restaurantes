@@ -1,6 +1,19 @@
-import { ActionForm, FormField } from '@/components/forms/ActionForm';
+import { ActionForm, FormField, FormSelect } from '@/components/forms/ActionForm';
 import { deleteService, updateService } from '@/lib/actions/schedule';
-import { formatRange, isWeekday, minutesToTime, WEEKDAY_LABELS_ES, type ServiceSlot } from '@/lib/schedule';
+import type { ScheduleService } from '@/lib/local/data';
+import { effectiveLastBooking } from '@/lib/reservations/day';
+import { formatRange, isWeekday, minutesToTime, WEEKDAY_LABELS_ES } from '@/lib/schedule';
+
+export const SLOT_INTERVAL_OPTIONS = [
+  { value: '15', label: 'Cada 15 min' },
+  { value: '30', label: 'Cada 30 min' },
+];
+
+/** 'última reserva 23:30 · cada 30 min' (la última, también cuando es la de por defecto). */
+function bookingSummary(service: ScheduleService): string {
+  const last = effectiveLastBooking(service.startMinute, service.endMinute, service.lastBookingMinute);
+  return `última reserva ${minutesToTime(last)} · cada ${service.slotIntervalMin} min`;
+}
 
 export function ServiceRow({
   restaurantId,
@@ -8,13 +21,13 @@ export function ServiceRow({
   readOnly,
 }: {
   restaurantId: string;
-  service: ServiceSlot & { id: string };
+  service: ScheduleService;
   readOnly: boolean;
 }) {
   if (readOnly) {
     return (
       <li className="py-1">
-        <strong>{service.name}</strong> · {formatRange(service.startMinute, service.endMinute)}
+        <strong>{service.name}</strong> · {formatRange(service.startMinute, service.endMinute)} · {bookingSummary(service)}
       </li>
     );
   }
@@ -31,6 +44,25 @@ export function ServiceRow({
           <FormField id={`name-${service.id}`} label="Servicio" name="name" defaultValue={service.name} maxLength={40} required />
           <FormField id={`start-${service.id}`} label="Empieza" name="start" type="time" defaultValue={minutesToTime(service.startMinute)} required />
           <FormField id={`end-${service.id}`} label="Acaba" name="end" type="time" defaultValue={minutesToTime(service.endMinute)} required />
+          <FormField
+            id={`last-${service.id}`}
+            label="Última reserva"
+            name="lastBooking"
+            type="time"
+            defaultValue={service.lastBookingMinute === null ? '' : minutesToTime(service.lastBookingMinute)}
+            hint={
+              service.lastBookingMinute === null
+                ? `Vacío: ${minutesToTime(effectiveLastBooking(service.startMinute, service.endMinute, null))}`
+                : undefined
+            }
+          />
+          <FormSelect
+            id={`interval-${service.id}`}
+            label="Horas de reserva"
+            name="slotInterval"
+            defaultValue={String(service.slotIntervalMin)}
+            options={SLOT_INTERVAL_OPTIONS}
+          />
         </ActionForm>
       </div>
       <form action={deleteService}>
@@ -39,7 +71,7 @@ export function ServiceRow({
         <button
           type="submit"
           aria-label={`Quitar ${service.name}${day}`}
-          className="px-2 py-3 text-sm font-bold text-red-700 hover:underline"
+          className="px-2 py-3 text-sm font-bold text-red-700 hover:underline focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-navy"
         >
           Quitar
         </button>
