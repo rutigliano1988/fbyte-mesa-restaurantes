@@ -44,7 +44,7 @@
 24. **Cuadrícula:** filas = mesas por zona; columnas = horas del servicio cada 15 min; barras por reserva y bloqueos rayados; tocar un hueco abre una reserva nueva con esa mesa y hora; tocar una barra abre su ficha. Usable con teclado (cada barra y cada hueco es un botón con nombre accesible).
 25. **Nueva reserva por teléfono:** personas, fecha, hora, teléfono (con búsqueda del cliente existente), nombre, email opcional, notas; propone la mesa más pequeña que sirve (desempate por posición) y deja elegir otra(s); si no hay hueco, avisa y ofrece «Guardar sin mesa».
 26. **Walk-in:** personas, mesa (libre ahora) y nombre opcional; nace `seated` con la hora actual.
-27. **Tiempo real:** Supabase Realtime (`postgres_changes` sobre `reservations`, `reservation_tables` y `blocks`, filtrado por restaurante y protegido por RLS); al llegar un cambio, la página se refresca. La migración añade esas tablas a la publicación `supabase_realtime` solo si existe (el shim de pruebas no la tiene).
+27. **Tiempo real:** Supabase Realtime (`postgres_changes` sobre `reservations`, `reservation_tables` y `blocks`, filtrado por restaurante y protegido por RLS); al llegar un cambio, la página se refresca. Los borrados no se pueden filtrar (solo traen la clave): solo cuentan los de los bloqueos que la página enseña, y los de `reservation_tables` no se escuchan. Al reconectar y al volver a la pestaña, también se refresca. La migración añade esas tablas a la publicación `supabase_realtime` solo si existe y no es `FOR ALL TABLES` (el shim de pruebas no la tiene).
 28. **Asistente de bienvenida:** añade el paso «Mesas» (crear al menos una), que no bloquea publicar.
 
 ### Pruebas
