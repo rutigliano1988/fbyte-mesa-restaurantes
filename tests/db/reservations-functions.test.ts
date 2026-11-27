@@ -224,6 +224,8 @@ describe('create_walk_in', () => {
       const row = await reservation(c, anon.id);
       expect(row).toMatchObject({ status: 'seated', source: 'walk_in', table_ids: [t.T2] });
       expect(Math.abs(row.starts_at.getTime() - Date.now())).toBeLessThan(120_000);
+      // Devuelve su inicio (la acción redirige al día de servicio de ese instante).
+      expect(Date.parse(anon.starts_at)).toBe(row.starts_at.getTime());
       const { rows } = await c.query('select c.name from public.reservations r join public.customers c on c.id = r.customer_id where r.id = $1', [named.id]);
       expect(rows).toEqual([{ name: 'Familia Ruiz' }]);
       const n = await c.query('select customer_id from public.reservations where id = $1', [anon.id]);

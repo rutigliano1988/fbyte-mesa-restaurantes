@@ -7,7 +7,7 @@ import { fieldErrorsFrom, type FormState } from '@/lib/forms';
 import { STATUS_LABELS_ES } from '@/lib/reservations/codes';
 import { customerWarnings, type CustomerWarning } from '@/lib/reservations/customers';
 import { loadBookingConfig } from '@/lib/reservations/data';
-import { startFor, startForEdit } from '@/lib/reservations/day';
+import { serviceDateOf, startFor, startForEdit } from '@/lib/reservations/day';
 import { normalizePhoneE164 } from '@/lib/reservations/phone';
 import { durationFor } from '@/lib/reservations/settings';
 import { phoneReservationSchema, readReservationForm, reservationEditSchema, statusSchema, walkInSchema, type TableMode } from '@/lib/reservations/validation';
@@ -111,7 +111,7 @@ export async function updateReservation(_prev: FormState, fd: FormData): Promise
   return result;
 }
 
-/** Walk-in: se sienta ya en la mesa o mesas elegidas. */
+/** Walk-in: se sienta ya en la mesa o mesas elegidas. Vuelve al día de servicio de su inicio (de madrugada, la víspera). */
 export async function createWalkIn(_prev: FormState, fd: FormData): Promise<FormState> {
   const parsed = walkInSchema.safeParse({
     partySize: field(fd, 'partySize'),
@@ -121,7 +121,7 @@ export async function createWalkIn(_prev: FormState, fd: FormData): Promise<Form
   if (!parsed.success) return { fieldErrors: fieldErrorsFrom(parsed.error) };
   const d = parsed.data;
   const restaurantId = field(fd, 'restaurantId');
-  const created = { id: '' };
+  const created = { id: '', date: '' };
   const result = await runPanelAction(
     restaurantId,
     'reservations.manage',
@@ -135,12 +135,19 @@ export async function createWalkIn(_prev: FormState, fd: FormData): Promise<Form
       });
       if (error) return { error: dbError('reservas.createWalkIn', error) };
       created.id = createdId(data);
-      if (!created.id) console.error('[reservas.createWalkIn] la BD no ha devuelto un id válido');
-      return created.id ? { success: 'Sentados.' } : { error: mapDbError(undefined) };
+      if (!created.id) {
+        console.error('[reservas.createWalkIn] la BD no ha devuelto un id válido');
+        return { error: mapDbError(undefined) };
+      }
+      const config = await loadBookingConfig(supabase, restaurantId);
+      const startedAt = Date.parse(String((data as { starts_at?: unknown }).starts_at));
+      created.date = serviceDateOf(Number.isFinite(startedAt) ? startedAt : Date.now(), config.timezone, config.services, config.exceptions);
+      return { success: 'Sentados.' };
     },
     PANEL_ONLY,
   );
-  if (created.id) redirect(`/panel/${restaurantId}/reservas?aviso=walk-in`);
+  // Si el walk-in se ha creado, se vuelve a la vista del día aunque luego algo falle (sin fecha: la de hoy).
+  if (created.id) redirect(`/panel/${restaurantId}/reservas?${created.date ? `fecha=${created.date}&` : ''}aviso=walk-in`);
   return result;
 }
 

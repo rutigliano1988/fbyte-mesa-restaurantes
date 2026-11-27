@@ -11,10 +11,10 @@ import { requirePanelAccess } from '@/lib/auth/guards';
 import { can } from '@/lib/permissions';
 import { isActiveStatus } from '@/lib/reservations/codes';
 import { getBookingConfig, getBookingDay } from '@/lib/reservations/data';
-import { groupByService, servicesForDate, summarize } from '@/lib/reservations/day';
+import { currentServiceDate, groupByService, servicesForDate, summarize } from '@/lib/reservations/day';
 import type { PanelReservation } from '@/lib/reservations/rows';
 import { addDays, dateParam, formatTime, serviceDayWindow } from '@/lib/reservations/time';
-import { formatRange, todayInTimeZone } from '@/lib/schedule';
+import { formatRange } from '@/lib/schedule';
 
 export const metadata: Metadata = { title: 'Reservas' };
 
@@ -45,7 +45,7 @@ export default async function ReservationsDayPage({
   const ctx = await requirePanelAccess(restaurantId, 'reservations.manage');
   const config = await getBookingConfig(restaurantId);
   const tz = config.timezone;
-  const today = todayInTimeZone(tz);
+  const today = currentServiceDate(config);
   const date = dateParam(sp.fecha, today);
   const day = await getBookingDay(restaurantId, date, tz);
   const services = servicesForDate(date, config.services, config.exceptions);

@@ -134,6 +134,14 @@ export function serviceDateOf(
 
 type StartConfig = { timezone: string; services: readonly ServiceConfig[]; exceptions: readonly ExceptionConfig[] };
 
+/**
+ * «Hoy» en el panel: el día de servicio de ahora. De madrugada, mientras dura la cena de la víspera que pasa de
+ * medianoche, sigue siendo la víspera.
+ */
+export function currentServiceDate(config: StartConfig, nowMs: number = Date.now()): string {
+  return serviceDateOf(nowMs, config.timezone, config.services, config.exceptions);
+}
+
 /** Fecha y hora del formulario → instante (la madrugada de una cena que pasa de medianoche es de esa noche). */
 export function startFor(config: StartConfig, date: string, minute: number): number {
   return zonedTimeToUtc(date, resolveMinute(minute, servicesForDate(date, config.services, config.exceptions)), config.timezone);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  currentServiceDate,
   effectiveLastBooking,
   groupByService,
   keepsStart,
@@ -112,6 +113,24 @@ it('serviceDateOf: la madrugada de la cena de la víspera es de la víspera', ()
   expect(serviceDateOf(zonedTimeToUtc('2030-06-15', 10, TZ), TZ, services, [])).toBe('2030-06-14');
   expect(serviceDateOf(zonedTimeToUtc('2030-06-15', 200, TZ), TZ, services, [])).toBe('2030-06-15');
   expect(serviceDateOf(zonedTimeToUtc('2030-06-14', 800, TZ), TZ, services, [])).toBe('2030-06-14');
+});
+
+describe('«hoy» en el panel: el día de servicio de ahora', () => {
+  // Sábado 2030-06-15: cena de 20:00 a 01:00 del domingo.
+  const config = {
+    timezone: TZ,
+    services: [{ name: 'Cena', weekday: 6, startMinute: 1200, endMinute: 1500, lastBookingMinute: null, slotIntervalMin: 15 }],
+    exceptions: [],
+  };
+
+  it('a las 00:30 del domingo sigue siendo el sábado (la cena aún no ha acabado)', () => {
+    expect(currentServiceDate(config, zonedTimeToUtc('2030-06-16', 30, TZ))).toBe('2030-06-15');
+  });
+
+  it('a las 12:00 es hoy; y a las 01:00, ya acabada la cena, también', () => {
+    expect(currentServiceDate(config, zonedTimeToUtc('2030-06-16', 720, TZ))).toBe('2030-06-16');
+    expect(currentServiceDate(config, zonedTimeToUtc('2030-06-16', 60, TZ))).toBe('2030-06-16');
+  });
 });
 
 describe('inicio al cambiar una reserva', () => {

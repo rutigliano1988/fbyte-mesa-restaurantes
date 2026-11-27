@@ -10,10 +10,10 @@ import { requirePanelAccess } from '@/lib/auth/guards';
 import { can } from '@/lib/permissions';
 import { compareTablesForDisplay } from '@/lib/reservations/availability';
 import { getBookingConfig, getBookingDay } from '@/lib/reservations/data';
-import { servicesForDate } from '@/lib/reservations/day';
+import { currentServiceDate, servicesForDate } from '@/lib/reservations/day';
 import { buildGrid } from '@/lib/reservations/grid';
 import { dateParam } from '@/lib/reservations/time';
-import { formatRange, todayInTimeZone } from '@/lib/schedule';
+import { formatRange } from '@/lib/schedule';
 
 export const metadata: Metadata = { title: 'Cuadrícula de reservas' };
 
@@ -29,7 +29,7 @@ export default async function GridPage({
   const ctx = await requirePanelAccess(restaurantId, 'reservations.manage');
   const config = await getBookingConfig(restaurantId);
   const tz = config.timezone;
-  const today = todayInTimeZone(tz);
+  const today = currentServiceDate(config);
   const date = dateParam(sp.fecha, today);
   const services = servicesForDate(date, config.services, config.exceptions);
   const service = services.find((s) => s.key === sp.servicio) ?? services[0] ?? null;

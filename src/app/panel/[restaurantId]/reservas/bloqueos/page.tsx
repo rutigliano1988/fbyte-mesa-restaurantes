@@ -8,8 +8,9 @@ import { createBlock, deleteBlock } from '@/lib/actions/blocks';
 import { requirePanelAccess } from '@/lib/auth/guards';
 import { compareTablesForDisplay } from '@/lib/reservations/availability';
 import { getBookingConfig, getBookingDay } from '@/lib/reservations/data';
+import { currentServiceDate } from '@/lib/reservations/day';
 import { dateParam, formatDayEs, formatTime, localParts, serviceDayWindow } from '@/lib/reservations/time';
-import { formatDateEs, todayInTimeZone } from '@/lib/schedule';
+import { formatDateEs } from '@/lib/schedule';
 
 export const metadata: Metadata = { title: 'Bloqueos' };
 
@@ -25,7 +26,7 @@ export default async function BlocksPage({
   const ctx = await requirePanelAccess(restaurantId, 'settings.booking');
   const config = await getBookingConfig(restaurantId);
   const tz = config.timezone;
-  const today = todayInTimeZone(tz);
+  const today = currentServiceDate(config);
   const date = dateParam(sp.fecha, today);
   const day = await getBookingDay(restaurantId, date, tz);
   const window = serviceDayWindow(date, tz);

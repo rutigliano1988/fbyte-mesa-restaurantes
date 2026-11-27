@@ -212,7 +212,9 @@ it('updateReservation: un id que no es uuid devuelve INVALID_INPUT sin llegar a 
   expect(rpc).not.toHaveBeenCalled();
 });
 
-it('createWalkIn: llama a create_walk_in con las mesas sin repetir y vuelve a la vista del día', async () => {
+it('createWalkIn: llama a create_walk_in con las mesas sin repetir y vuelve al día de servicio de su inicio', async () => {
+  // 00:15 del sábado en Madrid: aún es la cena del viernes (20:30–00:30).
+  rpc.mockResolvedValueOnce({ data: { id: ID, table_ids: [T1], starts_at: '2030-06-14T22:15:00+00:00' }, error: null });
   const result = await createWalkIn({}, form({ restaurantId: R, partySize: '3', tableIds: [T1, T1], name: 'Luis' }));
   expect(result).toEqual({ success: 'Sentados.' });
   expect(rpc).toHaveBeenCalledWith('create_walk_in', {
@@ -222,7 +224,7 @@ it('createWalkIn: llama a create_walk_in con las mesas sin repetir y vuelve a la
     p_duration_min: null,
     p_customer_name: 'Luis',
   });
-  expect(redirect).toHaveBeenCalledWith(`/panel/${R}/reservas?aviso=walk-in`);
+  expect(redirect).toHaveBeenCalledWith(`/panel/${R}/reservas?fecha=2030-06-14&aviso=walk-in`);
 });
 
 describe('lookupCustomer', () => {

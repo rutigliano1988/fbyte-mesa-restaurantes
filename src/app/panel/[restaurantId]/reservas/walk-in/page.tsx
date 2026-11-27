@@ -8,8 +8,8 @@ import { SectionCard } from '@/components/ui/SectionCard';
 import { requirePanelAccess } from '@/lib/auth/guards';
 import { can } from '@/lib/permissions';
 import { getBookingConfig, getBookingDay } from '@/lib/reservations/data';
+import { currentServiceDate } from '@/lib/reservations/day';
 import { formatTime } from '@/lib/reservations/time';
-import { todayInTimeZone } from '@/lib/schedule';
 
 export const metadata: Metadata = { title: 'Walk-in' };
 
@@ -22,10 +22,11 @@ export default async function WalkInPage({ params }: { params: Promise<{ restaur
   const { restaurantId } = await params;
   const ctx = await requirePanelAccess(restaurantId, 'reservations.manage');
   const config = await getBookingConfig(restaurantId);
-  const today = todayInTimeZone(config.timezone);
+  const now = nowToTheMinute();
+  // El día de servicio de ahora (de madrugada, el de la cena de la víspera si aún no ha acabado).
+  const today = currentServiceDate(config, now);
   // En modo soporte el formulario no se muestra: no se piden los datos del día.
   const day = ctx.readOnly ? null : await getBookingDay(restaurantId, today, config.timezone);
-  const now = nowToTheMinute();
   // Las mesas desactivadas no se ofrecen.
   const tables = config.tables.filter((t) => t.active);
 

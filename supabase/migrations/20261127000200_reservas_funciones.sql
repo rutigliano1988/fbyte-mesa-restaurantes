@@ -252,7 +252,7 @@ begin
   exception when exclusion_violation then
     raise exception 'SLOT_TAKEN' using errcode = 'P0001';
   end;
-  return jsonb_build_object('id', v_id, 'table_ids', to_jsonb(v_tables));
+  return jsonb_build_object('id', v_id, 'table_ids', to_jsonb(v_tables), 'starts_at', v_starts);
 end $$;
 
 /**

@@ -7,9 +7,9 @@ import { SectionCard } from '@/components/ui/SectionCard';
 import { requirePanelAccess } from '@/lib/auth/guards';
 import { can } from '@/lib/permissions';
 import { getBookingConfig, getBookingDay } from '@/lib/reservations/data';
-import { servicesForDate, slotMinutes } from '@/lib/reservations/day';
+import { currentServiceDate, servicesForDate, slotMinutes } from '@/lib/reservations/day';
 import { dateParam, formatDayEs } from '@/lib/reservations/time';
-import { minutesToTime, timeToMinutes, todayInTimeZone } from '@/lib/schedule';
+import { minutesToTime, timeToMinutes } from '@/lib/schedule';
 
 export const metadata: Metadata = { title: 'Nueva reserva' };
 
@@ -26,7 +26,7 @@ export default async function NewReservationPage({
   const sp = await searchParams;
   const ctx = await requirePanelAccess(restaurantId, 'reservations.manage');
   const config = await getBookingConfig(restaurantId);
-  const date = dateParam(sp.fecha, todayInTimeZone(config.timezone));
+  const date = dateParam(sp.fecha, currentServiceDate(config));
   const day = await getBookingDay(restaurantId, date, config.timezone);
   const services = servicesForDate(date, config.services, config.exceptions);
   const base = `/panel/${restaurantId}/reservas`;
