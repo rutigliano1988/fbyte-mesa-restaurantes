@@ -1,5 +1,5 @@
 import { slotMinutes, type DayService } from './day';
-import { zonedTimeToUtc } from './time';
+import { serviceDayMinute, zonedTimeToUtc } from './time';
 
 export type BookingTable = {
   id: string;
@@ -129,13 +129,15 @@ export type SlotsInput = {
 
 /**
  * Horas de un día con su mesa propuesta (spec §6.2): las de cada servicio del inicio a la última hora de reserva,
- * dentro de la antelación, con la mesa más pequeña que sirve libre durante toda la duración.
+ * dentro de la antelación, con la mesa más pequeña que sirve libre durante toda la duración. Las horas que no
+ * existen la noche del adelanto de hora (en Madrid, 02:00–02:59) no salen: serían el mismo instante que otra.
  */
 export function getAvailableSlots(input: SlotsInput): Slot[] {
   const out: Slot[] = [];
   for (const service of input.services) {
     for (const minute of slotMinutes(service)) {
       const startMs = zonedTimeToUtc(input.date, minute, input.timeZone);
+      if (serviceDayMinute(startMs, input.date, input.timeZone) !== minute) continue;
       if (input.notBeforeMs !== undefined && startMs < input.notBeforeMs) continue;
       if (input.notAfterMs !== undefined && startMs > input.notAfterMs) continue;
       const endMs = startMs + input.durationMin * 60_000;

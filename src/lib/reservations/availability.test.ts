@@ -159,4 +159,19 @@ describe('getAvailableSlots', () => {
       '2026-03-29T12:00:00.000Z',
     ]);
   });
+
+  it('la noche del adelanto de hora no salen las horas que no existen (ni duplicadas)', () => {
+    const saturday: ServiceConfig[] = [{ name: 'Copas', weekday: 6, startMinute: 1380, endMinute: 1680, lastBookingMinute: 1620, slotIntervalMin: 30 }];
+    const night = { ...base, date: '2026-03-28', services: servicesForDate('2026-03-28', saturday, []), durationMin: 60 };
+    const madrid = getAvailableSlots(night);
+    // 02:00 y 02:30 no existen en Madrid (a las 02:00 pasa a ser las 03:00).
+    expect(madrid.map((s) => s.minute)).toEqual([1380, 1410, 1440, 1470, 1500, 1530, 1620]);
+    expect(new Set(madrid.map((s) => s.startMs)).size).toBe(madrid.length);
+    expect(new Date(madrid.at(-1)!.startMs).toISOString()).toBe('2026-03-29T01:00:00.000Z');
+    // En Canarias el salto es a la 01:00: no existen ni la 01:00 ni la 01:30.
+    const canary = getAvailableSlots({ ...night, timeZone: 'Atlantic/Canary' });
+    expect(canary.map((s) => s.minute)).toEqual([1380, 1410, 1440, 1470, 1560, 1590, 1620]);
+    expect(new Set(canary.map((s) => s.startMs)).size).toBe(canary.length);
+    expect(new Date(canary.find((s) => s.minute === 1560)!.startMs).toISOString()).toBe('2026-03-29T01:00:00.000Z');
+  });
 });
