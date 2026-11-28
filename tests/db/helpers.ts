@@ -286,14 +286,28 @@ export async function insertReservation(
     source?: 'online' | 'phone' | 'walk_in';
     customerId?: string | null;
     tableIds?: string[];
+    /** Hito 4B: avisos por email al cliente (exige tokenHash). */
+    notifyCustomer?: boolean;
+    tokenHash?: string | null;
   },
 ): Promise<string> {
   await asSuperuser(c);
   const customerId = r.customerId === undefined ? await insertCustomer(c, restaurantId, { phone: null }) : r.customerId;
   const { rows } = await c.query<{ id: string }>(
-    `insert into public.reservations (restaurant_id, customer_id, party_size, starts_at, ends_at, status, source)
-     values ($1, $2, $3, $4::timestamptz, $4::timestamptz + make_interval(mins => $5), $6, $7) returning id`,
-    [restaurantId, customerId, r.partySize ?? 2, r.startsAt, r.minutes ?? 90, r.status ?? 'confirmed', r.source ?? 'phone'],
+    `insert into public.reservations (restaurant_id, customer_id, party_size, starts_at, ends_at, status, source,
+                                      notify_customer, manage_token_hash)
+     values ($1, $2, $3, $4::timestamptz, $4::timestamptz + make_interval(mins => $5), $6, $7, $8, $9) returning id`,
+    [
+      restaurantId,
+      customerId,
+      r.partySize ?? 2,
+      r.startsAt,
+      r.minutes ?? 90,
+      r.status ?? 'confirmed',
+      r.source ?? 'phone',
+      r.notifyCustomer ?? false,
+      r.tokenHash ?? null,
+    ],
   );
   for (const tableId of r.tableIds ?? []) {
     await c.query('insert into public.reservation_tables (reservation_id, table_id, restaurant_id) values ($1, $2, $3)', [
@@ -303,4 +317,43 @@ export async function insertReservation(
     ]);
   }
   return rows[0].id;
+}
+
+/** Como la clave de servicio (service_role): la que usa la app desde el servidor para el flujo público. */
+export async function asServiceRole(c: pg.PoolClient): Promise<void> {
+  await c.query('reset role');
+  await c.query("select set_config('request.jwt.claims', '', true)");
+  await c.query('set local role service_role');
+}
+
+/** Marca quién hace el cambio en esta transacción, como las funciones del Hito 4B ('customer', 'staff', 'system'). */
+export async function setActor(c: pg.PoolClient, actor: 'customer' | 'staff' | 'system' | null): Promise<void> {
+  await c.query("select set_config('mesa.actor', $1, true)", [actor ?? '']);
+}
+
+/** Huella de un token de prueba: 64 caracteres hexadecimales distintos para cada n. */
+export function fakeTokenHash(n: number): string {
+  return n.toString(16).padStart(64, '0');
+}
+
+/** Emails anotados en la cola para una reserva, por orden de alta y de tipo: ['customer_pending', 'restaurant_request']. */
+export async function outboxKinds(c: pg.PoolClient, reservationId: string): Promise<string[]> {
+  await asSuperuser(c);
+  const { rows } = await c.query<{ k: string }>(
+    'select o.kind::text as k from public.email_outbox o where o.reservation_id = $1 order by o.created_at, o.kind',
+    [reservationId],
+  );
+  return rows.map((r) => r.k);
+}
+
+/** Datos de un restaurante publicado (dirección, contacto y datos fiscales), con su email de contacto. */
+export async function setPublishedFields(c: pg.PoolClient, restaurantId: string, contactEmail: string | null = 'hola@restaurante.es'): Promise<void> {
+  await asSuperuser(c);
+  await c.query(
+    `update public.restaurants
+        set address_line = 'Calle Mayor 1', postal_code = '28013', city = 'Madrid', phone = '910000000',
+            contact_email = $2, legal_name = 'Taberna Pepe SL', tax_id = 'B12345674'
+      where id = $1`,
+    [restaurantId, contactEmail],
+  );
 }
