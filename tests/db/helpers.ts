@@ -357,3 +357,49 @@ export async function setPublishedFields(c: pg.PoolClient, restaurantId: string,
     [restaurantId, contactEmail],
   );
 }
+
+/** Servicio de un día de la semana (1 = lunes … 7 = domingo); por defecto, cena de 20:00 a 23:30 cada 15 min. */
+export async function insertService(
+  c: pg.PoolClient,
+  restaurantId: string,
+  s: { weekday: number; name?: string; start?: number; end?: number; last?: number | null; interval?: 15 | 30 },
+): Promise<void> {
+  await asSuperuser(c);
+  await c.query(
+    `insert into public.services (restaurant_id, name, weekday, start_minute, end_minute, last_booking_minute, slot_interval_min)
+     values ($1, $2, $3, $4, $5, $6, $7)`,
+    [restaurantId, s.name ?? 'Cena', s.weekday, s.start ?? 1200, s.end ?? 1410, s.last ?? null, s.interval ?? 15],
+  );
+}
+
+/**
+ * Restaurante listo para la reserva online: publicado (activo, con email de contacto), cena todos los días de 20:00 a
+ * 23:30 (última reserva 22:30) y ajustes con antelación mínima de 0 minutos y confirmación automática.
+ */
+export async function bookableRestaurant(c: pg.PoolClient, slug: string, opts: { timezone?: string } = {}): Promise<string> {
+  const id = await insertRestaurant(c, { name: `Rest ${slug}`, slug });
+  await setPublishedFields(c, id, `hola@${slug}.es`);
+  if (opts.timezone) await c.query('update public.restaurants set timezone = $2 where id = $1', [id, opts.timezone]);
+  for (let weekday = 1; weekday <= 7; weekday++) await insertService(c, id, { weekday });
+  await c.query('insert into public.booking_settings (restaurant_id, min_advance_min) values ($1, 0)', [id]);
+  return id;
+}
+
+/** Fecha local (AAAA-MM-DD) dentro de `days` días y el instante de `minute` de ese día, en la zona del restaurante. */
+export async function localSlot(c: pg.PoolClient, days: number, minute: number, timeZone = 'Europe/Madrid'): Promise<{ date: string; at: string }> {
+  const { rows } = await c.query<{ date: string; at: Date }>(
+    `select ((now() at time zone $3)::date + $1::int)::text as date,
+            (((now() at time zone $3)::date + $1::int)::timestamp + make_interval(mins => $2::int)) at time zone $3 as at`,
+    [days, minute, timeZone],
+  );
+  return { date: rows[0].date, at: rows[0].at.toISOString() };
+}
+
+/** Bloqueo de una mesa (o de todo el restaurante con tableId null) de 3 horas desde startsAt. */
+export async function insertBlockForTable(c: pg.PoolClient, restaurantId: string, tableId: string | null, startsAt: string, reason: string | null): Promise<void> {
+  await asSuperuser(c);
+  await c.query(
+    "insert into public.blocks (restaurant_id, table_id, starts_at, ends_at, reason) values ($1, $2, $3::timestamptz, $3::timestamptz + interval '3 hours', $4)",
+    [restaurantId, tableId, startsAt, reason],
+  );
+}
